@@ -1,142 +1,105 @@
 import React from 'react';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, View, Text, StyleSheet, Switch } from 'react-native';
 import { Alarm } from '../types';
 import { palette, theme } from '../theme/colors';
 
 interface Props {
   alarm: Alarm;
   onPress: () => void;
+  onToggle: (enabled: boolean) => void;
+  mode: 'fixed' | 'random';
 }
 
-export const AlarmCard: React.FC<Props> = ({ alarm, onPress }) => {
+export const AlarmCard: React.FC<Props> = ({ alarm, onPress, onToggle, mode }) => {
   return (
     <TouchableOpacity
       style={[styles.card, !alarm.active && styles.cardInactive]}
       activeOpacity={0.88}
       onPress={onPress}
     >
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.time}>{alarm.time}</Text>
-          <Text style={styles.title}>{alarm.title}</Text>
-        </View>
-        <View style={[styles.badge, { backgroundColor: badgeColor(alarm.action) }]}>
-          <Text style={styles.badgeText}>{labelForAction(alarm.action)}</Text>
-        </View>
+      <View style={styles.switchRow}>
+        <Switch
+          trackColor={{ false: palette.border, true: palette.sunrise }}
+          thumbColor={theme.card}
+          value={alarm.active}
+          onValueChange={onToggle}
+        />
       </View>
-      <Text style={styles.meta}>{alarm.nextTriggerLabel}</Text>
-      <View style={styles.footer}>
-        <Text style={styles.meta}>{alarm.actionDetail}</Text>
-        <View style={styles.dot} />
-        <Text style={styles.meta}>{alarm.toneLabel}</Text>
-      </View>
-      <View style={styles.dayRow}>
-        {alarm.repeatDays.map((day) => (
-          <View key={day} style={styles.dayChip}>
-            <Text style={styles.dayChipText}>{day}</Text>
-          </View>
-        ))}
+      <View style={styles.timeBlock}>
+        <Text style={styles.time}>{alarm.time}</Text>
+        <Text style={styles.subtitle}>{subtitleFor(alarm)}</Text>
+        <Text style={styles.actionLabel}>
+          {mode === 'fixed' ? labelForAction(alarm.action) : RANDOM_LABEL}
+        </Text>
       </View>
     </TouchableOpacity>
   );
 };
 
-const badgeColor = (action: Alarm['action']) => {
-  switch (action) {
-    case 'math':
-      return palette.sunrise;
-    case 'photo':
-      return palette.lavender;
-    case 'shake':
-    default:
-      return palette.mint;
+const subtitleFor = (alarm: Alarm) => {
+  if (!alarm.repeatDays.length) {
+    return alarm.title;
   }
+  return alarm.repeatDays.join(' / ');
 };
 
 const labelForAction = (action: Alarm['action']) => {
   switch (action) {
     case 'math':
-      return 'CALC';
+      return '計算チャレンジ';
     case 'photo':
-      return 'PROOF';
+      return '証拠ショット';
     case 'shake':
-      return 'MOVE';
+      return 'シェイク解除';
     default:
-      return 'ACTION';
+      return 'アクション未設定';
   }
 };
 
+const RANDOM_LABEL = 'ランダム';
+
 const styles = StyleSheet.create({
   card: {
+    position: 'relative',
     backgroundColor: theme.card,
-    padding: 20,
-    borderRadius: 18,
+    paddingHorizontal: 20,
+    paddingVertical: 24,
+    borderRadius: 24,
     marginBottom: 16,
     borderColor: palette.border,
-    borderWidth: 1
+    borderWidth: 1.2
   },
   cardInactive: {
-    opacity: 0.5
+    opacity: 0.6
   },
-  headerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start'
+  switchRow: {
+    position: 'absolute',
+    top: 16,
+    right: 16,
+    zIndex: 1
+  },
+  timeBlock: {
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12
   },
   time: {
     color: theme.textPrimary,
-    fontSize: 40,
+    fontSize: 52,
     fontWeight: '700',
-    letterSpacing: -1
+    letterSpacing: -1,
+    textAlign: 'center'
   },
-  title: {
+  subtitle: {
     color: theme.textSecondary,
-    fontSize: 16,
-    marginTop: 4
+    marginTop: 8,
+    fontSize: 14,
+    textAlign: 'center'
   },
-  badge: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    alignSelf: 'flex-start'
-  },
-  badgeText: {
-    color: palette.ink,
-    fontWeight: '700',
-    fontSize: 12
-  },
-  meta: {
-    color: theme.textSecondary,
-    marginTop: 12,
-    fontSize: 14
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center'
-  },
-  dot: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: theme.textSecondary,
-    marginHorizontal: 8
-  },
-  dayRow: {
-    flexDirection: 'row',
-    marginTop: 14,
-    flexWrap: 'wrap'
-  },
-  dayChip: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: theme.cardMuted,
-    marginRight: 8,
-    marginBottom: 6
-  },
-  dayChipText: {
-    color: theme.textPrimary,
-    fontSize: 12,
-    fontWeight: '600'
+  actionLabel: {
+    marginTop: 8,
+    color: palette.sunriseDark,
+    fontWeight: '600',
+    textAlign: 'center'
   }
 });

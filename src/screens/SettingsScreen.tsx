@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar } from 'react-native';
 import { AlarmAction } from '../types';
 import { palette, theme } from '../theme/colors';
 
@@ -8,9 +8,20 @@ interface Props {
   onSelectAction: (action: AlarmAction) => void;
   onClose: () => void;
   onPreviewAction: (action: AlarmAction) => void;
+  actionMode: 'fixed' | 'random';
+  onChangeMode: (mode: 'fixed' | 'random') => void;
+  onShowDemo: (mode: 'random' | AlarmAction) => void;
 }
 
-const SettingsScreen: React.FC<Props> = ({ currentAction, onSelectAction, onClose, onPreviewAction }) => {
+const SettingsScreen: React.FC<Props> = ({
+  currentAction,
+  onSelectAction,
+  onClose,
+  onPreviewAction,
+  actionMode,
+  onChangeMode,
+  onShowDemo
+}) => {
   return (
     <View style={styles.container}>
       <View style={styles.toolbar}>
@@ -19,6 +30,22 @@ const SettingsScreen: React.FC<Props> = ({ currentAction, onSelectAction, onClos
         </TouchableOpacity>
         <Text style={styles.toolbarTitle}>設定</Text>
         <View style={{ width: 24 }} />
+      </View>
+
+      <Text style={styles.sectionLabel}>アクションモード</Text>
+      <View style={styles.modeRow}>
+        <TouchableOpacity
+          style={[styles.modeChip, actionMode === 'fixed' && styles.modeChipActive]}
+          onPress={() => onChangeMode('fixed')}
+        >
+          <Text style={[styles.modeChipText, actionMode === 'fixed' && styles.modeChipTextActive]}>選択制</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.modeChip, actionMode === 'random' && styles.modeChipActive]}
+          onPress={() => onChangeMode('random')}
+        >
+          <Text style={[styles.modeChipText, actionMode === 'random' && styles.modeChipTextActive]}>ランダム</Text>
+        </TouchableOpacity>
       </View>
 
       <Text style={styles.sectionLabel}>デフォルトの解除アクション</Text>
@@ -55,12 +82,16 @@ const SettingsScreen: React.FC<Props> = ({ currentAction, onSelectAction, onClos
           <Text style={styles.rowTitle}>統計を記録</Text>
           <Text style={styles.rowSubtitle}>解除時間を記録して週次レポートを表示</Text>
         </View>
-        <View
-          style={[styles.fakeSwitch, { backgroundColor: 'transparent', borderColor: theme.divider }]}
-        >
-          <View style={[styles.fakeSwitchDot, { backgroundColor: theme.divider, marginLeft: 0 }]} />
-        </View>
+      <View
+        style={[styles.fakeSwitch, { backgroundColor: 'transparent', borderColor: theme.divider }]}
+      >
+        <View style={[styles.fakeSwitchDot, { backgroundColor: theme.divider, marginLeft: 0 }]} />
       </View>
+      </View>
+
+      <TouchableOpacity style={styles.demoButton} activeOpacity={0.9} onPress={() => onShowDemo('random')}>
+        <Text style={styles.demoText}>デモ画面を再生</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -91,12 +122,14 @@ const subtitleFor = (action: AlarmAction) => {
   }
 };
 
+const statusBarPadding = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
     paddingHorizontal: 20,
-    paddingTop: 16
+    paddingTop: 16 + statusBarPadding
   },
   toolbar: {
     flexDirection: 'row',
@@ -150,6 +183,29 @@ const styles = StyleSheet.create({
     color: palette.sunrise,
     fontWeight: '700'
   },
+  modeRow: {
+    flexDirection: 'row',
+    gap: 12
+  },
+  modeChip: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.divider,
+    paddingVertical: 12,
+    alignItems: 'center'
+  },
+  modeChipActive: {
+    backgroundColor: theme.card,
+    borderColor: palette.sunrise
+  },
+  modeChipText: {
+    color: theme.textSecondary,
+    fontWeight: '600'
+  },
+  modeChipTextActive: {
+    color: palette.sunriseDark
+  },
   fakeSwitch: {
     width: 52,
     height: 28,
@@ -166,6 +222,17 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: palette.white,
     marginLeft: 16
+  },
+  demoButton: {
+    marginTop: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
+    backgroundColor: palette.sunrise,
+    alignItems: 'center'
+  },
+  demoText: {
+    color: palette.white,
+    fontWeight: '700'
   }
 });
 

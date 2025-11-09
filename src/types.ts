@@ -4,10 +4,8 @@ export interface Alarm {
   id: string;
   title: string;
   time: string;
-  nextTriggerLabel: string;
   repeatDays: string[];
   action: AlarmAction;
-  actionDetail: string;
-  toneLabel: string;
+  mode: 'fixed' | 'random';
   active: boolean;
 }

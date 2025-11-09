@@ -1,25 +1,23 @@
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Platform, StatusBar } from 'react-native';
 import { Alarm } from '../types';
 import { AlarmCard } from '../components/AlarmCard';
 import { palette, theme } from '../theme/colors';
 
 interface Props {
   alarms: Alarm[];
-  upcomingAlarm: Alarm;
   onCreate: () => void;
   onEdit: (alarm: Alarm) => void;
   onOpenSettings: () => void;
+  onToggle: (alarmId: string, enabled: boolean) => void;
 }
 
-const HomeScreen: React.FC<Props> = ({ alarms, upcomingAlarm, onCreate, onEdit, onOpenSettings }) => {
+const HomeScreen: React.FC<Props> = ({ alarms, onCreate, onEdit, onOpenSettings, onToggle }) => {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.greetingLabel}>おこしてYO！</Text>
-          <Text style={styles.nextLabel}>次のアラーム</Text>
-          <Text style={styles.nextTime}>{upcomingAlarm.time}</Text>
+          <Text style={styles.title}>アラーム</Text>
         </View>
         <TouchableOpacity onPress={onOpenSettings} style={styles.settingsButton}>
           <Text style={styles.settingsEmoji}>⚙️</Text>
@@ -27,22 +25,17 @@ const HomeScreen: React.FC<Props> = ({ alarms, upcomingAlarm, onCreate, onEdit, 
         </TouchableOpacity>
       </View>
 
-      <View style={styles.heroCard}>
-        <Text style={styles.heroTitle}>{upcomingAlarm.title}</Text>
-        <Text style={styles.heroSubtitle}>{upcomingAlarm.nextTriggerLabel}</Text>
-        <View style={styles.heroActionRow}>
-          <Text style={styles.heroAction}>{upcomingAlarm.actionDetail}</Text>
-          <View style={styles.heroBadge}>
-            <Text style={styles.heroBadgeText}>絶対起こすマン</Text>
-          </View>
-        </View>
-      </View>
-
-      <Text style={styles.sectionTitle}>アラーム一覧</Text>
       <FlatList
         data={alarms}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <AlarmCard alarm={item} onPress={() => onEdit(item)} />}
+        renderItem={({ item }) => (
+          <AlarmCard
+            alarm={item}
+            onPress={() => onEdit(item)}
+            onToggle={(enabled) => onToggle(item.id, enabled)}
+            mode={item.mode ?? 'fixed'}
+          />
+        )}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 120 }}
       />
@@ -54,32 +47,24 @@ const HomeScreen: React.FC<Props> = ({ alarms, upcomingAlarm, onCreate, onEdit, 
   );
 };
 
+const statusBarPadding = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
     paddingHorizontal: 20,
-    paddingTop: 12
+    paddingTop: 12 + statusBarPadding
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center'
   },
-  greetingLabel: {
-    color: theme.textSecondary,
-    fontSize: 16,
-    marginBottom: 4
-  },
-  nextLabel: {
-    color: theme.textSecondary,
-    fontSize: 14
-  },
-  nextTime: {
+  title: {
     color: theme.textPrimary,
-    fontSize: 48,
-    fontWeight: '700',
-    marginTop: 4
+    fontSize: 28,
+    fontWeight: '700'
   },
   settingsButton: {
     alignItems: 'center'
@@ -91,43 +76,6 @@ const styles = StyleSheet.create({
     color: theme.textSecondary,
     fontSize: 12,
     marginTop: 4
-  },
-  heroCard: {
-    backgroundColor: theme.card,
-    borderRadius: 22,
-    padding: 20,
-    marginTop: 24,
-    borderWidth: 1,
-    borderColor: theme.divider
-  },
-  heroTitle: {
-    color: theme.textPrimary,
-    fontSize: 20,
-    fontWeight: '600'
-  },
-  heroSubtitle: {
-    color: theme.textSecondary,
-    marginTop: 4
-  },
-  heroActionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 16
-  },
-  heroAction: {
-    color: palette.sunrise,
-    fontWeight: '600'
-  },
-  heroBadge: {
-    backgroundColor: theme.cardMuted,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12
-  },
-  heroBadgeText: {
-    color: theme.textSecondary,
-    fontSize: 12
   },
   sectionTitle: {
     color: theme.textPrimary,

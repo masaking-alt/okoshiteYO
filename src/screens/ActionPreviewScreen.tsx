@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar } from 'react-native';
 import { AlarmAction } from '../types';
 import { palette, theme } from '../theme/colors';
 import { actionMeta } from '../data/alarms';
@@ -71,12 +71,14 @@ const badgeColor = (action: AlarmAction) => {
   }
 };
 
+const statusBarPadding = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
     paddingHorizontal: 20,
-    paddingTop: 16
+    paddingTop: 16 + statusBarPadding
   },
   toolbar: {
     flexDirection: 'row',

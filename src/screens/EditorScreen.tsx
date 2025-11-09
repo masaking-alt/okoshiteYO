@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, StatusBar } from 'react-native';
 import { AlarmAction, Alarm } from '../types';
 import { palette, theme } from '../theme/colors';
 
@@ -7,6 +7,9 @@ interface Props {
   alarm?: Alarm;
   onBack: () => void;
   onPreviewAction: (action: AlarmAction) => void;
+  onSave: (alarm: Alarm) => void;
+  defaultAction: AlarmAction;
+  defaultMode: 'fixed' | 'random';
 }
 
 const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -17,9 +20,24 @@ const actionOptions: { key: AlarmAction; title: string; hint: string; accent: st
   { key: 'photo', title: '証拠ショット', hint: '登録した場所を撮影', accent: palette.lavender }
 ];
 
-const EditorScreen: React.FC<Props> = ({ alarm, onBack, onPreviewAction }) => {
-  const selectedAction = alarm?.action ?? 'math';
+const EditorScreen: React.FC<Props> = ({ alarm, onBack, onPreviewAction, onSave, defaultAction, defaultMode }) => {
   const [hour, minutes] = (alarm?.time ?? '07:30').split(':');
+  const [mode, setMode] = useState<'fixed' | 'random'>(alarm?.mode ?? defaultMode);
+  const [selectedAction, setSelectedAction] = useState<AlarmAction>(alarm?.action ?? defaultAction);
+  const effectiveMode = mode;
+
+  const handleSave = () => {
+    const payload: Alarm = {
+      id: alarm?.id ?? Date.now().toString(),
+      title: alarm?.title ?? '新しいアラーム',
+      time: `${hour}:${minutes}`,
+      repeatDays: alarm?.repeatDays ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      action: selectedAction,
+      mode,
+      active: alarm?.active ?? true
+    };
+    onSave(payload);
+  };
 
   return (
     <View style={styles.container}>
@@ -31,11 +49,11 @@ const EditorScreen: React.FC<Props> = ({ alarm, onBack, onPreviewAction }) => {
         <View style={{ width: 24 }} />
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        <Text style={styles.label}>時間</Text>
+        <Text style={styles.label}>時刻</Text>
         <View style={styles.timeRow}>
           <TouchableOpacity style={styles.timeBox}>
             <Text style={styles.timeBoxText}>{hour}</Text>
-            <Text style={styles.timeCaption}>hour</Text>
+            <Text style={styles.timeCaption}>o'clock</Text>
           </TouchableOpacity>
           <Text style={styles.timeColon}>:</Text>
           <TouchableOpacity style={styles.timeBox}>
@@ -56,45 +74,74 @@ const EditorScreen: React.FC<Props> = ({ alarm, onBack, onPreviewAction }) => {
           })}
         </View>
 
+        <Text style={styles.label}>解除モード</Text>
+        <View style={styles.modeRow}>
+          {(['fixed', 'random'] as const).map((value) => {
+            const active = mode === value;
+            return (
+              <TouchableOpacity
+                key={value}
+                style={[styles.modeChip, active && styles.modeChipActive]}
+                onPress={() => setMode(value)}
+              >
+                <Text style={[styles.modeChipText, active && styles.modeChipTextActive]}>
+                  {value === 'fixed' ? '選択制' : 'ランダム'}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         <Text style={styles.label}>解除アクション</Text>
-        {actionOptions.map((action) => {
-          const active = action.key === selectedAction;
-          return (
-            <TouchableOpacity
-              key={action.key}
-              style={[styles.actionCard, active && { borderColor: action.accent }]}
-              onPress={() => onPreviewAction(action.key)}
-            >
-              <View>
-                <Text style={styles.actionTitle}>{action.title}</Text>
-                <Text style={styles.actionHint}>{action.hint}</Text>
-              </View>
-              <View style={[styles.actionBadge, { backgroundColor: action.accent }]}>
-                <Text style={styles.actionBadgeText}>{active ? '選択中' : 'プレビュー'}</Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
+        {effectiveMode === 'fixed' &&
+          actionOptions.map((action) => {
+            const active = action.key === selectedAction;
+            return (
+              <TouchableOpacity
+                key={action.key}
+                style={[styles.actionCard, active && { borderColor: action.accent }]}
+                onPress={() => setSelectedAction(action.key)}
+                onLongPress={() => onPreviewAction(action.key)}
+              >
+                <View>
+                  <Text style={styles.actionTitle}>{action.title}</Text>
+                  <Text style={styles.actionHint}>{action.hint}</Text>
+                </View>
+                <View style={[styles.actionBadge, { backgroundColor: action.accent }]}>
+                  <Text style={styles.actionBadgeText}>{active ? '選択中' : '長押しでプレビュー'}</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+
+        {effectiveMode === 'random' && (
+          <View style={styles.randomNotice}>
+            <Text style={styles.actionTitle}>ランダムアクション</Text>
+            <Text style={styles.randomHelper}>計算 / シェイク / 証拠ショットの3種類から毎回ランダムに出題されます。</Text>
+          </View>
+        )}
 
         <Text style={styles.label}>メモ</Text>
         <View style={styles.noteBox}>
           <Text style={styles.noteText}>{alarm?.title ?? '例: 英語プレゼン用アラーム'}</Text>
         </View>
 
-        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.9}>
-          <Text style={styles.primaryButtonText}>保存（ダミー）</Text>
+        <TouchableOpacity style={styles.primaryButton} activeOpacity={0.9} onPress={handleSave}>
+          <Text style={styles.primaryButtonText}>保存</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
   );
 };
 
+const statusBarPadding = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
     paddingHorizontal: 20,
-    paddingTop: 16
+    paddingTop: 16 + statusBarPadding
   },
   toolbar: {
     flexDirection: 'row',
@@ -221,6 +268,47 @@ const styles = StyleSheet.create({
     color: palette.white,
     fontSize: 16,
     fontWeight: '700'
+  },
+  randomHelper: {
+    color: theme.textSecondary,
+    marginTop: 8,
+    lineHeight: 20
+  },
+  randomNotice: {
+    backgroundColor: theme.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.divider,
+    padding: 20,
+    marginBottom: 12
+  },
+  modeRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12
+  },
+  modeChip: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: theme.divider,
+    paddingVertical: 12,
+    alignItems: 'center'
+  },
+  modeChipActive: {
+    borderColor: palette.sunrise,
+    backgroundColor: theme.card
+  },
+  modeChipText: {
+    color: theme.textSecondary,
+    fontWeight: '600'
+  },
+  modeChipTextActive: {
+    color: palette.sunriseDark
+  },
+  helperText: {
+    color: theme.textSecondary,
+    fontSize: 12
   }
 });
 
