@@ -7,10 +7,6 @@
     "assetBundlePatterns": [
       "**/*"
     ],
-    "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "com.anonymous.okoshiteyo"
-    },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"

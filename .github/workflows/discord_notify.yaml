@@ -1,0 +1,100 @@
+name: Notify Discord on push
+
+on:
+  push:
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send push notification to Discord
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          HEAD_MESSAGE: ${{ github.event.head_commit.message }}
+          HEAD_URL: ${{ github.event.head_commit.url }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DISCORD_WEBHOOK_URL:-}" ]; then
+            echo "DISCORD_WEBHOOK_URL secret is not set." >&2
+            exit 1
+          fi
+
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          if [ "$BRANCH" = "$GITHUB_REF" ]; then
+            BRANCH="${GITHUB_REF#refs/}"
+          fi
+          CONTENT_PREFIX="📦 ${GITHUB_REPOSITORY}@${BRANCH} updated by ${GITHUB_ACTOR}"
+
+          export CONTENT_PREFIX HEAD_MESSAGE HEAD_URL
+
+          PAYLOAD=$(python3 - <<'PY'
+          import json
+          import os
+
+          def clean_ref(ref_value):
+              if not ref_value:
+                  return "unknown"
+              for prefix in ("refs/heads/", "refs/tags/"):
+                  if ref_value.startswith(prefix):
+                      return ref_value[len(prefix):]
+              return ref_value
+
+          content = os.environ["CONTENT_PREFIX"]
+          head_msg = os.environ.get("HEAD_MESSAGE")
+          if head_msg:
+              content += "\n" + head_msg
+
+          repository = os.environ["GITHUB_REPOSITORY"]
+          default_url = f"https://github.com/{repository}"
+          compare_url = os.environ.get("HEAD_URL") or default_url
+
+          commit_lines = []
+
+          event_path = os.environ.get("GITHUB_EVENT_PATH")
+          if event_path and os.path.isfile(event_path):
+              with open(event_path, "r", encoding="utf-8") as event_file:
+                  event = json.load(event_file)
+
+              commits = event.get("commits") or []
+              compare_url = event.get("compare") or compare_url
+
+              if commits:
+                  for commit in commits[:5]:
+                      message = (commit.get("message") or "").splitlines()[0]
+                      author = commit.get("author", {}).get("name") or "unknown"
+                      commit_id = (commit.get("id") or "")[:7]
+                      commit_lines.append(f"- {commit_id} {message} ({author})")
+                  extra = len(commits) - 5
+                  if extra > 0:
+                      commit_lines.append(f"- ...and {extra} more commits")
+              else:
+                  ref_name = clean_ref(event.get("ref"))
+                  if event.get("created"):
+                      commit_lines.append(f"Branch {ref_name} was created.")
+                  elif event.get("deleted"):
+                      commit_lines.append(f"Branch {ref_name} was deleted.")
+                  else:
+                      commit_lines.append("Push completed with no new commits.")
+
+          embed = {"title": "View push details", "url": compare_url}
+          if commit_lines:
+              embed["description"] = "\n".join(commit_lines)
+
+          payload = {
+              "content": content,
+              "embeds": [embed],
+          }
+          print(json.dumps(payload))
+          PY
+          )
+
+          echo "::notice ::$PAYLOAD"
+          if [ -z "$PAYLOAD" ]; then
+            echo "payload is empty" >&2
+            exit 1
+          fi
+
+          curl -sS -X POST "$DISCORD_WEBHOOK_URL" \
+            -H "Content-Type: application/json" \
+            -d "$PAYLOAD"
