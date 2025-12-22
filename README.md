@@ -27,3 +27,9 @@ The mock data lives in `src/data/alarms.ts`. Update it to try different personas
 1. Bridge Android’s `AlarmManager` + `ForegroundService` to trigger the RN screens when alarms fire.
 2. Mirror the behavior on iOS with `UNUserNotificationCenter` (action UI opens after the notification is tapped).
 3. Replace the static editor state with a proper store (e.g., Zustand, Jotai, or Redux Toolkit) and persist to SQLite/WatermelonDB.
+
+
+## Run bev server 
+npm start -- --tunnel      
+## If you want to do cashe clear 
+npm start --clear --tunnel
