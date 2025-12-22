@@ -39,6 +39,13 @@
 3. 開発サーバー起動: `npm start`（内部で `npx expo start` を呼ぶ。トンネルは `npm start -- --tunnel`）
 4. Androidで動作確認（iOSは対象外）
 
+## Expo起動手順（先生向け）
+1. 依存インストール: `npm install`
+2. Expo起動: `npm start`（または `npx expo start`）
+3. Android実機で確認:
+   - Expo Go を起動し、表示されたQRを読み取る
+   - USB接続の場合は `a` でAndroidを起動
+
 ## ディレクトリと担当の目安
 - `App.tsx` … 画面遷移と状態管理
 - `src/data/alarms.ts` … モックデータとアクションメタ
