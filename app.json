@@ -15,6 +15,12 @@
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "159d66ac-4120-43d8-bf2f-32b1adf5081d"
+      }
+    },
+    "owner": "masaking"
   }
 }
