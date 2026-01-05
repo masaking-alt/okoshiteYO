@@ -12,7 +12,7 @@ interface Props {
   defaultMode: 'fixed' | 'random';
 }
 
-const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const days = ['月', '火', '水', '木', '金', '土', '日'];
 
 const actionOptions: { key: AlarmAction; title: string; hint: string; accent: string }[] = [
   { key: 'math', title: '計算チャレンジ', hint: '3問解かないと止まらない', accent: palette.sunrise },
@@ -98,7 +98,8 @@ const EditorScreen: React.FC<Props> = ({ alarm, onBack, onPreviewAction, onSave,
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.label}>繰り返し</Text>
+        {/* 千田 修正箇所 （余分な表示の削除） */}
+        {/*<Text style={styles.label}>繰り返し</Text>*/}
         <View style={styles.dayRow}>
           {days.map((day) => {
             const active = repeatDays.includes(day);
@@ -245,16 +246,26 @@ const styles = StyleSheet.create({
   },
   dayRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap'
+    flexWrap: 'wrap',
+    /*千田修正箇所（文字幅の調節）曜日 */
+    justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: 5,
+
+    /*-- 千田修正箇所　（曜日ボタンと時間調整ボタンとの距離調整） --*/
+    marginTop:20,
   },
-  dayChip: {
-    borderRadius: 999,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  dayChip: {//曜日ボタンのデザイン
+    borderRadius: 20,
+
+    width:'13%',
+    height:36,
+    alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: theme.divider,
-    marginRight: 8,
     marginBottom: 8
+
   },
   dayChipActive: {
     backgroundColor: theme.card,
