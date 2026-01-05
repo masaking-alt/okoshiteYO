@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, StatusBar } from 'react-native';
 import { AlarmAction, Alarm } from '../types';
 import { palette, theme } from '../theme/colors';
@@ -21,17 +21,53 @@ const actionOptions: { key: AlarmAction; title: string; hint: string; accent: st
 ];
 
 const EditorScreen: React.FC<Props> = ({ alarm, onBack, onPreviewAction, onSave, defaultAction, defaultMode }) => {
-  const [hour, minutes] = (alarm?.time ?? '07:30').split(':');
+  const [hour, setHour] = useState<string>((alarm?.time ?? '07:30').split(':')[0]);
+  const [minutes, setMinutes] = useState<string>((alarm?.time ?? '07:30').split(':')[1]);
   const [mode, setMode] = useState<'fixed' | 'random'>(alarm?.mode ?? defaultMode);
   const [selectedAction, setSelectedAction] = useState<AlarmAction>(alarm?.action ?? defaultAction);
+  const [repeatDays, setRepeatDays] = useState<string[]>(alarm?.repeatDays ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
+
   const effectiveMode = mode;
+
+  const adjustHour = () => {
+    setHour((prev) => {
+      const next = (parseInt(prev, 10) + 1) % 24;
+      return twoDigit(next);
+    });
+  };
+
+  const adjustMinutes = () => {
+    setMinutes((prev) => {
+      const next = (parseInt(prev, 10) + 5) % 60;
+      return twoDigit(next);
+    });
+  };
+
+  const toggleDay = (day: string) => {
+    setRepeatDays((prev) => {
+      if (prev.includes(day)) {
+        return prev.filter((d) => d !== day);
+      }
+      return [...prev, day].sort((a, b) => days.indexOf(a) - days.indexOf(b));
+    });
+  };
+
+  const requirementText = useMemo(() => {
+    if (selectedAction === 'photo') {
+      return '写真解除にはカメラ + 位置許可が必要。拒否された場合は自動で計算 or シェイクに切替。';
+    }
+    if (selectedAction === 'shake') {
+      return 'シェイク解除はセンサーが必要。音量・バイブは絶対起動モードを使用。';
+    }
+    return '計算チャレンジは3〜5問を出題。難易度は後で調整可能。';
+  }, [selectedAction]);
 
   const handleSave = () => {
     const payload: Alarm = {
       id: alarm?.id ?? Date.now().toString(),
       title: alarm?.title ?? '新しいアラーム',
       time: `${hour}:${minutes}`,
-      repeatDays: alarm?.repeatDays ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      repeatDays,
       action: selectedAction,
       mode,
       active: alarm?.active ?? true
@@ -51,25 +87,30 @@ const EditorScreen: React.FC<Props> = ({ alarm, onBack, onPreviewAction, onSave,
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         <Text style={styles.label}>時刻</Text>
         <View style={styles.timeRow}>
-          <TouchableOpacity style={styles.timeBox}>
+          <TouchableOpacity style={styles.timeBox} onPress={adjustHour} activeOpacity={0.8}>
             <Text style={styles.timeBoxText}>{hour}</Text>
-            <Text style={styles.timeCaption}>o'clock</Text>
+            <Text style={styles.timeCaption}>タップで+1h</Text>
           </TouchableOpacity>
           <Text style={styles.timeColon}>:</Text>
-          <TouchableOpacity style={styles.timeBox}>
+          <TouchableOpacity style={styles.timeBox} onPress={adjustMinutes} activeOpacity={0.8}>
             <Text style={styles.timeBoxText}>{minutes}</Text>
-            <Text style={styles.timeCaption}>min</Text>
+            <Text style={styles.timeCaption}>タップで+5m</Text>
           </TouchableOpacity>
         </View>
 
         <Text style={styles.label}>繰り返し</Text>
         <View style={styles.dayRow}>
           {days.map((day) => {
-            const active = alarm?.repeatDays?.includes(day) ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].includes(day);
+            const active = repeatDays.includes(day);
             return (
-              <View key={day} style={[styles.dayChip, active && styles.dayChipActive]}>
+              <TouchableOpacity
+                key={day}
+                style={[styles.dayChip, active && styles.dayChipActive]}
+                onPress={() => toggleDay(day)}
+                activeOpacity={0.8}
+              >
                 <Text style={[styles.dayChipText, active && styles.dayChipTextActive]}>{day}</Text>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </View>
@@ -120,6 +161,16 @@ const EditorScreen: React.FC<Props> = ({ alarm, onBack, onPreviewAction, onSave,
             <Text style={styles.randomHelper}>計算 / シェイク / 証拠ショットの3種類から毎回ランダムに出題されます。</Text>
           </View>
         )}
+
+        <View style={styles.requirementCard}>
+          <Text style={styles.requirementTitle}>解除条件のメモ</Text>
+          <Text style={styles.requirementText}>{requirementText}</Text>
+          {selectedAction === 'photo' && (
+            <Text style={styles.requirementFootnote}>
+              写真ミッションが使えないときは計算問題またはシェイクへ自動フォールバックします。
+            </Text>
+          )}
+        </View>
 
         <Text style={styles.label}>メモ</Text>
         <View style={styles.noteBox}>
@@ -309,7 +360,32 @@ const styles = StyleSheet.create({
   helperText: {
     color: theme.textSecondary,
     fontSize: 12
+  },
+  requirementCard: {
+    backgroundColor: theme.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.divider,
+    padding: 16,
+    marginTop: 8
+  },
+  requirementTitle: {
+    color: theme.textPrimary,
+    fontWeight: '700'
+  },
+  requirementText: {
+    color: theme.textSecondary,
+    marginTop: 6,
+    lineHeight: 20
+  },
+  requirementFootnote: {
+    color: palette.sunriseDark,
+    marginTop: 8,
+    fontSize: 12,
+    lineHeight: 18
   }
 });
+
+const twoDigit = (value: number) => value.toString().padStart(2, '0');
 
 export default EditorScreen;
