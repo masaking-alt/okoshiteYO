@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, ScrollView, Alert, NativeModules } from 'react-native';
 import { AlarmAction } from '../types';
 import { palette, theme } from '../theme/colors';
+
+const QUICK_ALARM_OFFSET_MS = 30_000;
+
+type AlarmModuleType = {
+  scheduleAlarm: (alarmId: string, timestamp: number, options?: { title?: string; mode?: string; time?: string }) => Promise<boolean>;
+  stopAlarm: () => Promise<boolean>;
+};
 
 interface Props {
   currentAction: AlarmAction;
@@ -34,6 +41,42 @@ const SettingsScreen: React.FC<Props> = ({
       ...prev,
       [key]: prev[key] === 'granted' ? 'needs' : 'granted'
     }));
+  };
+
+  const scheduleQuickAlarm = async () => {
+    const alarmModule = NativeModules.AlarmModule as AlarmModuleType | undefined;
+    if (!alarmModule?.scheduleAlarm) {
+      Alert.alert('AlarmModule not available');
+      return;
+    }
+    const fireAt = Date.now() + QUICK_ALARM_OFFSET_MS;
+    const alarmId = `quick_${fireAt}`;
+    try {
+      await alarmModule.scheduleAlarm(alarmId, fireAt, {
+        title: 'Test Alarm',
+        mode: actionMode,
+        time: new Date(fireAt).toTimeString().slice(0, 5)
+      });
+      Alert.alert('Alarm scheduled', 'Rings in ~30s');
+    } catch (error) {
+      console.warn('Failed to schedule alarm', error);
+      Alert.alert('Failed to schedule alarm');
+    }
+  };
+
+  const stopAlarm = async () => {
+    const alarmModule = NativeModules.AlarmModule as AlarmModuleType | undefined;
+    if (!alarmModule?.stopAlarm) {
+      Alert.alert('AlarmModule not available');
+      return;
+    }
+    try {
+      await alarmModule.stopAlarm();
+      Alert.alert('Alarm stopped');
+    } catch (error) {
+      console.warn('Failed to stop alarm', error);
+      Alert.alert('Failed to stop alarm');
+    }
   };
 
   return (
@@ -139,6 +182,12 @@ const SettingsScreen: React.FC<Props> = ({
 
         <TouchableOpacity style={styles.demoButton} activeOpacity={0.9} onPress={() => onShowDemo('random')}>
           <Text style={styles.demoText}>デモ画面を再生</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.demoButton, styles.testButton]} activeOpacity={0.9} onPress={scheduleQuickAlarm}>
+          <Text style={styles.demoText}>Test Alarm (30s)</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.demoButton, styles.stopButton]} activeOpacity={0.9} onPress={stopAlarm}>
+          <Text style={styles.demoText}>Stop Alarm</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -345,6 +394,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: palette.sunrise,
     alignItems: 'center'
+  },
+  testButton: {
+    marginTop: 12
+  },
+  stopButton: {
+    marginTop: 8,
+    backgroundColor: palette.ink
   },
   demoText: {
     color: palette.white,
