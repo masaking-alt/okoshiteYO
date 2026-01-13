@@ -4,6 +4,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.app.ActivityOptions
 import android.content.Context
 import android.content.Intent
 import android.media.AudioAttributes
@@ -12,6 +13,7 @@ import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.os.Build
+import android.os.Bundle
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
@@ -61,34 +63,26 @@ class AlarmForegroundService : Service() {
         val payload = intent?.extras
         ensureChannel()
 
-        val fullScreenIntent = Intent(this, AlarmRingingActivity::class.java).apply {
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            if (payload != null) {
-                putExtras(payload)
-            }
-        }
-        val fullScreenPending = PendingIntent.getActivity(
-            this,
-            0,
-            fullScreenIntent,
-            pendingFlags()
-        )
+        val fullScreenPending = createFullScreenPendingIntent(payload)
 
         val notification = NotificationCompat.Builder(this, AlarmConstants.CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(payload?.getString(AlarmConstants.EXTRA_TITLE) ?: "Alarm")
             .setContentText("Tap to open")
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setOngoing(true)
             .setAutoCancel(false)
+            .setContentIntent(fullScreenPending)
             .setFullScreenIntent(fullScreenPending, true)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .build()
 
         startForeground(AlarmConstants.NOTIFICATION_ID, notification)
         startRingtone()
         startVibration()
+        launchAlarmActivity(fullScreenPending)
         acquireWakeLock()
         return START_NOT_STICKY
     }
@@ -193,6 +187,40 @@ class AlarmForegroundService : Service() {
         vibrationHandler.removeCallbacks(vibrationRunnable)
         vibrator?.cancel()
         vibrator = null
+    }
+
+    private fun launchAlarmActivity(pendingIntent: PendingIntent) {
+        try {
+            val options = pendingIntentSendOptions()
+            if (options != null) {
+                pendingIntent.send(this, 0, null, null, null, null, options)
+            } else {
+                pendingIntent.send()
+            }
+        } catch (_: PendingIntent.CanceledException) {
+            // Ignore; notification tap can still open the activity.
+        }
+    }
+
+    private fun createFullScreenPendingIntent(payload: Bundle?): PendingIntent {
+        val intent = Intent(this, AlarmRingingActivity::class.java).apply {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            if (payload != null) {
+                putExtras(payload)
+            }
+        }
+        return PendingIntent.getActivity(this, 0, intent, pendingFlags())
+    }
+
+    private fun pendingIntentSendOptions(): Bundle? {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val options = ActivityOptions.makeBasic()
+            options.setPendingIntentBackgroundActivityStartMode(
+                ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED
+            )
+            return options.toBundle()
+        }
+        return null
     }
 
     private fun vibrateOnce() {
