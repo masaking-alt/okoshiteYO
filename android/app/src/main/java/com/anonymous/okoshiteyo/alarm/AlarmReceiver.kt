@@ -12,6 +12,7 @@ class AlarmReceiver : BroadcastReceiver() {
             return
         }
         val payload = intent.extras ?: Bundle()
+        AlarmEventEmitter.emitIfReady(context, payload)
         val serviceIntent = Intent(context, AlarmForegroundService::class.java).apply {
             action = AlarmConstants.ACTION_FIRE
             putExtras(payload)

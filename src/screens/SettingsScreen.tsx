@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, ScrollVi
 import { AlarmAction } from '../types';
 import { palette, theme } from '../theme/colors';
 
-const QUICK_ALARM_OFFSET_MS = 30_000;
+const QUICK_ALARM_OFFSET_MS = 10_000;
 
 type AlarmModuleType = {
   scheduleAlarm: (alarmId: string, timestamp: number, options?: { title?: string; mode?: string; time?: string }) => Promise<boolean>;
@@ -51,13 +51,14 @@ const SettingsScreen: React.FC<Props> = ({
     }
     const fireAt = Date.now() + QUICK_ALARM_OFFSET_MS;
     const alarmId = `quick_${fireAt}`;
+    const fireMode = actionMode === 'random' ? 'random' : currentAction;
     try {
       await alarmModule.scheduleAlarm(alarmId, fireAt, {
         title: 'Test Alarm',
-        mode: actionMode,
+        mode: fireMode,
         time: new Date(fireAt).toTimeString().slice(0, 5)
       });
-      Alert.alert('Alarm scheduled', 'Rings in ~30s');
+      Alert.alert('Alarm scheduled', 'Rings in ~10s');
     } catch (error) {
       console.warn('Failed to schedule alarm', error);
       Alert.alert('Failed to schedule alarm');
@@ -184,10 +185,19 @@ const SettingsScreen: React.FC<Props> = ({
           <Text style={styles.demoText}>デモ画面を再生</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.demoButton, styles.testButton]} activeOpacity={0.9} onPress={scheduleQuickAlarm}>
-          <Text style={styles.demoText}>Test Alarm (30s)</Text>
+          <Text style={styles.demoText}>Test Alarm (10s)</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.demoButton, styles.stopButton]} activeOpacity={0.9} onPress={stopAlarm}>
           <Text style={styles.demoText}>Stop Alarm</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.demoButton, styles.testButton]} activeOpacity={0.9} onPress={() => onShowDemo('math')}>
+          <Text style={styles.demoText}>Alarm Math Screen</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.demoButton, styles.testButton]} activeOpacity={0.9} onPress={() => onShowDemo('shake')}>
+          <Text style={styles.demoText}>Alarm Shake Screen</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.demoButton, styles.testButton]} activeOpacity={0.9} onPress={() => onShowDemo('photo')}>
+          <Text style={styles.demoText}>Alarm Photo Screen</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>

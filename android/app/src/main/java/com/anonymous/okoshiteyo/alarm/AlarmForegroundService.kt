@@ -68,7 +68,7 @@ class AlarmForegroundService : Service() {
         val notification = NotificationCompat.Builder(this, AlarmConstants.CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
             .setContentTitle(payload?.getString(AlarmConstants.EXTRA_TITLE) ?: "Alarm")
-            .setContentText("Tap to open")
+            .setContentText("ここをタップ！！")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

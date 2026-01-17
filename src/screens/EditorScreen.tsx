@@ -8,6 +8,7 @@ interface Props {
   onBack: () => void;
   onPreviewAction: (action: AlarmAction) => void;
   onSave: (alarm: Alarm) => void;
+  onDelete?: (alarmId: string) => void;
   defaultAction: AlarmAction;
   defaultMode: 'fixed' | 'random';
 }
@@ -20,7 +21,15 @@ const actionOptions: { key: AlarmAction; title: string; hint: string; accent: st
   { key: 'photo', title: '証拠ショット', hint: '登録した場所を撮影', accent: palette.lavender }
 ];
 
-const EditorScreen: React.FC<Props> = ({ alarm, onBack, onPreviewAction, onSave, defaultAction, defaultMode }) => {
+const EditorScreen: React.FC<Props> = ({
+  alarm,
+  onBack,
+  onPreviewAction,
+  onSave,
+  onDelete,
+  defaultAction,
+  defaultMode
+}) => {
   const [hour, setHour] = useState<string>((alarm?.time ?? '07:30').split(':')[0]);
   const [minutes, setMinutes] = useState<string>((alarm?.time ?? '07:30').split(':')[1]);
   const [mode, setMode] = useState<'fixed' | 'random'>(alarm?.mode ?? defaultMode);
@@ -73,6 +82,13 @@ const EditorScreen: React.FC<Props> = ({ alarm, onBack, onPreviewAction, onSave,
       active: alarm?.active ?? true
     };
     onSave(payload);
+  };
+
+  const handleDelete = () => {
+    if (!alarm?.id || !onDelete) {
+      return;
+    }
+    onDelete(alarm.id);
   };
 
   return (
@@ -181,6 +197,11 @@ const EditorScreen: React.FC<Props> = ({ alarm, onBack, onPreviewAction, onSave,
         <TouchableOpacity style={styles.primaryButton} activeOpacity={0.9} onPress={handleSave}>
           <Text style={styles.primaryButtonText}>保存</Text>
         </TouchableOpacity>
+        {alarm?.id && onDelete && (
+          <TouchableOpacity style={styles.deleteButton} activeOpacity={0.9} onPress={handleDelete}>
+            <Text style={styles.deleteButtonText}>削除</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
@@ -329,6 +350,20 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: palette.white,
     fontSize: 16,
+    fontWeight: '700'
+  },
+  deleteButton: {
+    marginTop: 12,
+    backgroundColor: theme.card,
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#F3B4B4'
+  },
+  deleteButtonText: {
+    color: '#C92B2B',
+    fontSize: 15,
     fontWeight: '700'
   },
   randomHelper: {

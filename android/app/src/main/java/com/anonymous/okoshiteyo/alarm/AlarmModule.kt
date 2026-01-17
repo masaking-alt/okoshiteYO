@@ -11,6 +11,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
 
 class AlarmModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
@@ -38,6 +39,10 @@ class AlarmModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
                 }
                 if (options.hasKey("time")) {
                     putString(AlarmConstants.EXTRA_TIME, options.getString("time"))
+                }
+                if (options.hasKey("repeatDays")) {
+                    val repeatDays = options.getArray("repeatDays")
+                    putStringArray(AlarmConstants.EXTRA_REPEAT_DAYS, toStringArray(repeatDays))
                 }
             }
         }
@@ -136,5 +141,19 @@ class AlarmModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         reactApplicationContext.startActivity(intent)
         promise.resolve(true)
+    }
+
+    private fun toStringArray(value: ReadableArray?): Array<String> {
+        if (value == null) {
+            return emptyArray()
+        }
+        val result = ArrayList<String>()
+        for (index in 0 until value.size()) {
+            val item = value.getString(index)
+            if (item != null) {
+                result.add(item)
+            }
+        }
+        return result.toTypedArray()
     }
 }

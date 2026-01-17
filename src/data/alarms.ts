@@ -29,21 +29,3 @@ export const alarmsMock: Alarm[] = [
     active: false
   }
 ];
-
-export const actionMeta = {
-  math: {
-    title: '計算チャレンジ',
-    description: '頭をフル稼働させる3〜5問の計算問題。難易度は3段階。',
-    badge: 'BRAIN BOOST'
-  },
-  shake: {
-    title: 'シェイク解除',
-    description: '端末を一定回数振って血流をアップ。',
-    badge: 'MOVE'
-  },
-  photo: {
-    title: '証拠ショット',
-    description: '登録済みの場所を撮影しないと止まらない。',
-    badge: 'PROOF'
-  }
-} as const;
