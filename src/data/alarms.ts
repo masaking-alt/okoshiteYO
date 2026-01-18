@@ -1,6 +1,8 @@
-import { Alarm } from '../types';
+import { Alarm } from "../types";
+//邪魔なので一旦コメントアウト。欲しかったら個人で復活させてね
 
 export const alarmsMock: Alarm[] = [
+/*
   {
     id: '1',
     title: '一限講義 / 月水金',
@@ -28,4 +30,6 @@ export const alarmsMock: Alarm[] = [
     mode: 'fixed',
     active: false
   }
+*/
 ];
+

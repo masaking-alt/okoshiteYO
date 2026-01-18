@@ -1,13 +1,80 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import AlarmFireLayout from '../components/AlarmFireLayout';
-import { FireProps } from './fire/types';
+import { FireMode, FireProps } from './fire/types';
+import { computePhotoHash, hammingDistance } from '../services/photoHash';
+import { getPhotoReferenceHash, setPhotoReference } from '../services/photoReferenceStore';
 
-const AlarmPhotoScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
+type PhotoMode = 'verify' | 'register';
+
+type Props = FireProps & {
+  mode?: PhotoMode;
+  onRegisterComplete?: () => void;
+  onFallback?: (mode: FireMode) => void;
+};
+
+const HASH_THRESHOLD = 25;
+const MAX_ATTEMPTS = 3;
+const FALLBACK_MODES: FireMode[] = ['math', 'shake'];
+
+const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, mode = 'verify', onRegisterComplete, onFallback }) => {
   const cameraRef = useRef<CameraView | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [isCapturing, setIsCapturing] = useState(false);
+  const [referenceHash, setReferenceHash] = useState<string | null>(null);
+  const [attempts, setAttempts] = useState(0);
+  const [status, setStatus] = useState<string>('');
+  const fallbackTriggered = useRef(false);
+
+  const isRegister = mode === 'register';
+  const remainingAttempts = Math.max(0, MAX_ATTEMPTS - attempts);
+
+  const triggerFallback = (message: string) => {
+    if (!onFallback || fallbackTriggered.current) {
+      return;
+    }
+    fallbackTriggered.current = true;
+    setStatus(message);
+    const fallback = FALLBACK_MODES[Math.floor(Math.random() * FALLBACK_MODES.length)];
+    setTimeout(() => {
+      onFallback(fallback);
+    }, 400);
+  };
+
+  useEffect(() => {
+    let active = true;
+    if (isRegister) {
+      setReferenceHash(null);
+      setAttempts(0);
+      setStatus('');
+      fallbackTriggered.current = false;
+      return () => {
+        active = false;
+      };
+    }
+    const loadReference = async () => {
+      try {
+        const stored = await getPhotoReferenceHash();
+        if (!active) {
+          return;
+        }
+        setReferenceHash(stored);
+        if (!stored) {
+          triggerFallback('参照写真が未登録のため別の解除へ切替');
+        }
+      } catch {
+        if (active) {
+          setReferenceHash(null);
+          triggerFallback('参照写真の読み込みに失敗しました');
+        }
+      }
+    };
+    loadReference();
+    return () => {
+      active = false;
+    };
+  }, [isRegister, onFallback]);
 
   const handleCapture = async () => {
     if (!cameraRef.current || isCapturing) {
@@ -15,18 +82,68 @@ const AlarmPhotoScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
     }
     setIsCapturing(true);
     try {
-      await cameraRef.current.takePictureAsync({ quality: 0.6 });
-      onGiveUp();
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.6 });
+      const { hash, normalizedUri } = await computePhotoHash(photo.uri);
+      if (isRegister) {
+        await setPhotoReference(hash, normalizedUri);
+        setStatus('参照写真を登録しました');
+        setTimeout(() => {
+          onRegisterComplete?.();
+        }, 400);
+        return;
+      }
+      if (!referenceHash) {
+        triggerFallback('参照写真が未登録のため別の解除へ切替');
+        return;
+      }
+      const distance = hammingDistance(hash, referenceHash);
+      if (distance <= HASH_THRESHOLD) {
+        setStatus('一致しました');
+        onGiveUp();
+        return;
+      }
+      const nextAttempts = attempts + 1;
+      setAttempts(nextAttempts);
+      setStatus(`一致しませんでした (差分 ${distance})`);
+      if (nextAttempts >= MAX_ATTEMPTS) {
+        triggerFallback('一致しないため別の解除へ切替');
+      }
     } catch (error) {
+      if ((error as { code?: string })?.code === 'PHOTO_TOO_DARK') {
+        setStatus('暗すぎるため撮り直してください');
+        return;
+      }
       console.warn('Failed to take photo', error);
+      setStatus('撮影に失敗しました');
     } finally {
       setIsCapturing(false);
     }
   };
 
+  const label = isRegister ? '参照写真を登録' : '証拠写真で解除';
+  const description = useMemo(() => {
+    if (isRegister) {
+      return 'この写真を解除の基準として登録します';
+    }
+    if (referenceHash) {
+      return `残り ${remainingAttempts} 回まで再撮影できます`;
+    }
+    return '参照写真が未登録です';
+  }, [isRegister, referenceHash, remainingAttempts]);
+
+  const buttonText = useMemo(() => {
+    if (!permission?.granted) {
+      return 'カメラを許可';
+    }
+    if (isCapturing) {
+      return '撮影中...';
+    }
+    return isRegister ? '撮影して登録' : '撮影して解除';
+  }, [isCapturing, isRegister, permission?.granted]);
+
   return (
-    <AlarmFireLayout time={time} label="証拠写真で解除" onGiveUp={onGiveUp} backgroundColor="#FF70A6">
-      <Text style={styles.question}>登録した場所を撮影してください</Text>
+    <AlarmFireLayout time={time} label={label} onGiveUp={onGiveUp} backgroundColor="#FF70A6">
+      <Text style={styles.question}>撮影してください</Text>
       <View style={styles.cameraBox}>
         {permission?.granted ? (
           <CameraView ref={cameraRef} style={styles.cameraPreview} facing="back" />
@@ -36,16 +153,15 @@ const AlarmPhotoScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
           </View>
         )}
       </View>
-      {permission?.granted ? (
-        <TouchableOpacity style={styles.captureButton} onPress={handleCapture} activeOpacity={0.9}>
-          <Text style={styles.captureText}>{isCapturing ? '撮影中...' : '撮影して解除'}</Text>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity style={styles.captureButton} onPress={() => requestPermission()} activeOpacity={0.9}>
-          <Text style={styles.captureText}>カメラを許可</Text>
-        </TouchableOpacity>
-      )}
-      <Text style={styles.hint}>撮影が成功したら解除されます。</Text>
+      <TouchableOpacity
+        style={styles.captureButton}
+        onPress={permission?.granted ? handleCapture : () => requestPermission()}
+        activeOpacity={0.9}
+      >
+        <Text style={styles.captureText}>{buttonText}</Text>
+      </TouchableOpacity>
+      <Text style={styles.hint}>{description}</Text>
+      {!!status && <Text style={styles.status}>{status}</Text>}
     </AlarmFireLayout>
   );
 };
@@ -95,6 +211,12 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginTop: 12,
     textAlign: 'center'
+  },
+  status: {
+    color: '#fff',
+    marginTop: 8,
+    textAlign: 'center',
+    fontSize: 12
   }
 });
 

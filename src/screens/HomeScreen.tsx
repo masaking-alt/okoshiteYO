@@ -17,7 +17,7 @@ const HomeScreen: React.FC<Props> = ({ alarms, onCreate, onEdit, onOpenSettings,
     <View style={styles.container}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.title}>アラーム</Text>
+          <Text style={styles.title}>おこしてYO!</Text>
         </View>
         <TouchableOpacity onPress={onOpenSettings} style={styles.settingsButton}>
           <Text style={styles.settingsEmoji}>⚙️</Text>

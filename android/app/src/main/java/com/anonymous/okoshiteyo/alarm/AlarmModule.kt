@@ -113,6 +113,17 @@ class AlarmModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
         startSettingsIntent(intent, promise)
     }
 
+    @ReactMethod
+    fun computePhotoHash(uri: String, promise: Promise) {
+        try {
+            val hash = PhotoHasher.computeDHash(reactApplicationContext, uri)
+            promise.resolve(hash)
+        } catch (e: Exception) {
+            val code = if (e.message == "PHOTO_TOO_DARK") "PHOTO_TOO_DARK" else "PHOTO_HASH_ERROR"
+            promise.reject(code, e)
+        }
+    }
+
     private fun scheduleInternal(
         alarmId: String,
         timestamp: Double,
