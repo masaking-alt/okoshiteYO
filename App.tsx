@@ -127,22 +127,31 @@ const App: React.FC<AppProps> = ({ alarm }) => {
   };
 
   const saveAlarm = async (updated: Alarm) => {
-    if (updated.active) {
-      const allowed = await ensureSchedulePermissions();
-      if (!allowed) {
-        return;
-      }
-      const ok = await scheduleAlarmFor(updated);
-      if (!ok) {
-        return;
-      }
-    } else {
+    // 既存アラームの場合、キャンセルしてから再スケジュール
+    if (updated.id && updated.id !== Date.now().toString()) {
       try {
         await cancelAlarm(updated.id);
       } catch (error) {
-        console.warn('Failed to cancel alarm', error);
+        console.warn('Failed to cancel previous alarm', error);
       }
     }
+
+    if (updated.active) {
+      const allowed = await ensureSchedulePermissions();
+      if (!allowed) {
+        console.warn('Permission check failed');
+        // 権限がなくても、無効状態で保存できるようにする
+        updated = { ...updated, active: false };
+      } else {
+        const ok = await scheduleAlarmFor(updated);
+        if (!ok) {
+          console.warn('Schedule alarm failed');
+          // スケジューリング失敗時も無効状態で保存
+          updated = { ...updated, active: false };
+        }
+      }
+    }
+
     setAlarms((prev) => {
       const exists = prev.some((alarm) => alarm.id === updated.id);
       if (exists) {

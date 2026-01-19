@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, StatusBar } from 'react-native';
+import React, { useMemo, useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, StatusBar, NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import { AlarmAction, Alarm } from '../types';
 import { palette, theme } from '../theme/colors';
 
@@ -21,6 +21,57 @@ const actionOptions: { key: AlarmAction; title: string; hint: string; accent: st
   { key: 'photo', title: '証拠ショット', hint: '登録した場所を撮影', accent: palette.lavender }
 ];
 
+interface TimePickerProps {
+  value: string;
+  onValueChange: (newValue: string) => void;
+  type: 'hour' | 'minute';
+}
+
+const TimePicker: React.FC<TimePickerProps> = ({ value, onValueChange, type }) => {
+  const scrollViewRef = useRef<ScrollView>(null);
+  const itemHeight = 50;
+  const maxItems = type === 'hour' ? 24 : 60;
+  const step = type === 'hour' ? 1 : 5;
+
+  const items = Array.from({ length: Math.ceil(maxItems / step) }, (_, i) => i * step);
+  const currentIndex = items.findIndex((item) => item === parseInt(value, 10));
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const index = Math.round(offsetY / itemHeight);
+    const selected = items[index] || 0;
+    onValueChange(twoDigit(selected));
+  };
+
+  return (
+    <View style={styles.timePickerContainer}>
+      <ScrollView
+        ref={scrollViewRef}
+        scrollEventThrottle={16}
+        onScroll={handleScroll}
+        snapToInterval={itemHeight}
+        decelerationRate="fast"
+        showsVerticalScrollIndicator={false}
+        style={styles.timePickerScroll}
+        contentContainerStyle={{
+          paddingVertical: itemHeight * 2,
+        }}
+      >
+        {items.map((item) => (
+          <View key={item} style={{ height: itemHeight, justifyContent: 'center' }}>
+            <Text style={[styles.timePickerItem, item === parseInt(value, 10) && styles.timePickerItemSelected]}>
+              {twoDigit(item)}
+            </Text>
+          </View>
+        ))}
+      </ScrollView>
+      <View style={styles.timePickerOverlay} pointerEvents="none">
+        <View style={styles.timePickerHighlight} />
+      </View>
+    </View>
+  );
+};
+
 const EditorScreen: React.FC<Props> = ({
   alarm,
   onBack,
@@ -34,23 +85,7 @@ const EditorScreen: React.FC<Props> = ({
   const [minutes, setMinutes] = useState<string>((alarm?.time ?? '07:30').split(':')[1]);
   const [mode, setMode] = useState<'fixed' | 'random'>(alarm?.mode ?? defaultMode);
   const [selectedAction, setSelectedAction] = useState<AlarmAction>(alarm?.action ?? defaultAction);
-  const [repeatDays, setRepeatDays] = useState<string[]>(alarm?.repeatDays ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri']);
-
-  const effectiveMode = mode;
-
-  const adjustHour = () => {
-    setHour((prev) => {
-      const next = (parseInt(prev, 10) + 1) % 24;
-      return twoDigit(next);
-    });
-  };
-
-  const adjustMinutes = () => {
-    setMinutes((prev) => {
-      const next = (parseInt(prev, 10) + 5) % 60;
-      return twoDigit(next);
-    });
-  };
+  const [repeatDays, setRepeatDays] = useState<string[]>(alarm?.repeatDays ?? ['月', '火', '水', '木', '金']);
 
   const toggleDay = (day: string) => {
     setRepeatDays((prev) => {
@@ -79,7 +114,7 @@ const EditorScreen: React.FC<Props> = ({
       repeatDays,
       action: selectedAction,
       mode,
-      active: alarm?.active ?? true
+      active: alarm?.active ?? false
     };
     onSave(payload);
   };
@@ -102,16 +137,10 @@ const EditorScreen: React.FC<Props> = ({
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         <Text style={styles.label}>時刻</Text>
-        <View style={styles.timeRow}>
-          <TouchableOpacity style={styles.timeBox} onPress={adjustHour} activeOpacity={0.8}>
-            <Text style={styles.timeBoxText}>{hour}</Text>
-            <Text style={styles.timeCaption}>タップで+1h</Text>
-          </TouchableOpacity>
+        <View style={styles.timePickerWrapper}>
+          <TimePicker value={hour} onValueChange={setHour} type="hour" />
           <Text style={styles.timeColon}>:</Text>
-          <TouchableOpacity style={styles.timeBox} onPress={adjustMinutes} activeOpacity={0.8}>
-            <Text style={styles.timeBoxText}>{minutes}</Text>
-            <Text style={styles.timeCaption}>タップで+5m</Text>
-          </TouchableOpacity>
+          <TimePicker value={minutes} onValueChange={setMinutes} type="minute" />
         </View>
 
         {/* 千田 修正箇所 （余分な表示の削除） */}
@@ -151,7 +180,7 @@ const EditorScreen: React.FC<Props> = ({
         </View>
 
         <Text style={styles.label}>解除アクション</Text>
-        {effectiveMode === 'fixed' &&
+        {mode === 'fixed' &&
           actionOptions.map((action) => {
             const active = action.key === selectedAction;
             return (
@@ -172,7 +201,7 @@ const EditorScreen: React.FC<Props> = ({
             );
           })}
 
-        {effectiveMode === 'random' && (
+        {mode === 'random' && (
           <View style={styles.randomNotice}>
             <Text style={styles.actionTitle}>ランダムアクション</Text>
             <Text style={styles.randomHelper}>計算 / シェイク / 証拠ショットの3種類から毎回ランダムに出題されます。</Text>
@@ -264,6 +293,55 @@ const styles = StyleSheet.create({
     color: theme.textPrimary,
     fontSize: 40,
     paddingHorizontal: 12
+  },
+  timePickerWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+    marginTop: -16,
+    gap: 12
+  },
+  timePickerContainer: {
+    flex: 1,
+    height: 200,
+    position: 'relative'
+  },
+  timePickerScroll: {
+    flex: 1
+  },
+  timePickerItem: {
+    textAlign: 'center',
+    fontSize: 28,
+    fontWeight: '600',
+    color: palette.ink,
+    backgroundColor: palette.white,
+    marginHorizontal: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e0e0e0'
+  },
+  timePickerItemSelected: {
+    color: palette.white,
+    backgroundColor: palette.sunrise,
+    fontSize: 36,
+    fontWeight: '700',
+    borderColor: palette.sunrise
+  },
+  timePickerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center'
+  },
+  timePickerHighlight: {
+    height: 50,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: palette.sunrise
   },
   dayRow: {
     flexDirection: 'row',
