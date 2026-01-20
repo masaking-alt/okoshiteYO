@@ -3,6 +3,8 @@ package com.anonymous.okoshiteyo.alarm
 import android.app.AlarmManager
 import android.app.NotificationManager
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -13,9 +15,15 @@ import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
+import java.io.File
+import java.io.InputStream
 
 class AlarmModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaModule(reactContext) {
     override fun getName(): String = "AlarmModule"
+
+    private val objectDetectorHelper: ObjectDetectorHelper by lazy {
+        ObjectDetectorHelper(reactApplicationContext)
+    }
 
     @ReactMethod
     fun setAlarm(timestamp: Double, promise: Promise) {
@@ -114,14 +122,20 @@ class AlarmModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
     }
 
     @ReactMethod
-    fun computePhotoHash(uri: String, promise: Promise) {
-        try {
-            val hash = PhotoHasher.computeDHash(reactApplicationContext, uri)
-            promise.resolve(hash)
+    fun detectObject(imagePath: String, targetLabel: String, promise: Promise) {
+        val bitmap = try {
+            loadBitmap(imagePath)
         } catch (e: Exception) {
-            val code = if (e.message == "PHOTO_TOO_DARK") "PHOTO_TOO_DARK" else "PHOTO_HASH_ERROR"
-            promise.reject(code, e)
+            promise.reject("OBJECT_DETECT_IMAGE_ERROR", e)
+            return
         }
+        val matched = try {
+            objectDetectorHelper.detect(bitmap, targetLabel)
+        } catch (e: Exception) {
+            promise.reject("OBJECT_DETECT_INFERENCE_ERROR", e)
+            return
+        }
+        promise.resolve(matched)
     }
 
     private fun scheduleInternal(
@@ -152,6 +166,22 @@ class AlarmModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         reactApplicationContext.startActivity(intent)
         promise.resolve(true)
+    }
+
+    private fun loadBitmap(uriString: String): Bitmap {
+        val uri = Uri.parse(uriString)
+        if (uri.scheme.isNullOrEmpty()) {
+            val file = File(uriString)
+            val bitmap = BitmapFactory.decodeFile(file.absolutePath)
+            if (bitmap != null) {
+                return bitmap
+            }
+        }
+        val inputStream: InputStream = reactApplicationContext.contentResolver.openInputStream(uri)
+            ?: throw IllegalStateException("Unable to open image stream.")
+        return inputStream.use {
+            BitmapFactory.decodeStream(it) ?: throw IllegalStateException("Unable to decode bitmap.")
+        }
     }
 
     private fun toStringArray(value: ReadableArray?): Array<String> {

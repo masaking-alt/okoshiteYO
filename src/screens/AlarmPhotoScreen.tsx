@@ -3,31 +3,76 @@ import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import AlarmFireLayout from '../components/AlarmFireLayout';
 import { FireMode, FireProps } from './fire/types';
-import { computePhotoHash, hammingDistance } from '../services/photoHash';
-import { getPhotoReferenceHash, setPhotoReference } from '../services/photoReferenceStore';
-
-type PhotoMode = 'verify' | 'register';
+import { detectObject } from '../services/objectDetection';
 
 type Props = FireProps & {
-  mode?: PhotoMode;
-  onRegisterComplete?: () => void;
   onFallback?: (mode: FireMode) => void;
 };
 
-const HASH_THRESHOLD = 25;
 const MAX_ATTEMPTS = 3;
 const FALLBACK_MODES: FireMode[] = ['math', 'shake'];
+const TARGET_LABELS = [
+  'scissors',
+  'keyboard',
+  'mouse',
+  'bottle',
+  'remote',
+  'book',
+  'cup',
+  'laptop',
+  'tv',
+  'chair',
+  'couch',
+  'dining table',
+  'potted plant',
+  'clock',
+  'vase',
+  'bowl',
+  'spoon',
+  'fork',
+] as const;
+type TargetLabel = (typeof TARGET_LABELS)[number];
 
-const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, mode = 'verify', onRegisterComplete, onFallback }) => {
+type DetectError = {
+  code?: string;
+  message?: string;
+};
+
+const pickTargetLabel = (): TargetLabel => {
+  return TARGET_LABELS[Math.floor(Math.random() * TARGET_LABELS.length)];
+};
+
+const describeDetectError = (error: unknown): DetectError => {
+  if (error && typeof error === 'object') {
+    const maybeError = error as { code?: string; message?: string };
+    return { code: maybeError.code, message: maybeError.message };
+  }
+  if (typeof error === 'string') {
+    return { message: error };
+  }
+  return {};
+};
+
+const hintForErrorCode = (code?: string) => {
+  switch (code) {
+    case 'OBJECT_DETECT_IMAGE_ERROR':
+      return '画像の読み込みに失敗しました';
+    case 'OBJECT_DETECT_INFERENCE_ERROR':
+      return 'モデル読み込み/推論に失敗しました';
+    default:
+      return undefined;
+  }
+};
+
+const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, onFallback }) => {
   const cameraRef = useRef<CameraView | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [isCapturing, setIsCapturing] = useState(false);
-  const [referenceHash, setReferenceHash] = useState<string | null>(null);
+  const [targetLabel, setTargetLabel] = useState<TargetLabel>(() => pickTargetLabel());
   const [attempts, setAttempts] = useState(0);
   const [status, setStatus] = useState<string>('');
   const fallbackTriggered = useRef(false);
 
-  const isRegister = mode === 'register';
   const remainingAttempts = Math.max(0, MAX_ATTEMPTS - attempts);
 
   const triggerFallback = (message: string) => {
@@ -43,38 +88,11 @@ const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, mode = 'verify', on
   };
 
   useEffect(() => {
-    let active = true;
-    if (isRegister) {
-      setReferenceHash(null);
-      setAttempts(0);
-      setStatus('');
-      fallbackTriggered.current = false;
-      return () => {
-        active = false;
-      };
-    }
-    const loadReference = async () => {
-      try {
-        const stored = await getPhotoReferenceHash();
-        if (!active) {
-          return;
-        }
-        setReferenceHash(stored);
-        if (!stored) {
-          triggerFallback('参照写真が未登録のため別の解除へ切替');
-        }
-      } catch {
-        if (active) {
-          setReferenceHash(null);
-          triggerFallback('参照写真の読み込みに失敗しました');
-        }
-      }
-    };
-    loadReference();
-    return () => {
-      active = false;
-    };
-  }, [isRegister, onFallback]);
+    setTargetLabel(pickTargetLabel());
+    setAttempts(0);
+    setStatus('');
+    fallbackTriggered.current = false;
+  }, [time]);
 
   const handleCapture = async () => {
     if (!cameraRef.current || isCapturing) {
@@ -83,53 +101,33 @@ const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, mode = 'verify', on
     setIsCapturing(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.6 });
-      const { hash, normalizedUri } = await computePhotoHash(photo.uri);
-      if (isRegister) {
-        await setPhotoReference(hash, normalizedUri);
-        setStatus('参照写真を登録しました');
-        setTimeout(() => {
-          onRegisterComplete?.();
-        }, 400);
-        return;
-      }
-      if (!referenceHash) {
-        triggerFallback('参照写真が未登録のため別の解除へ切替');
-        return;
-      }
-      const distance = hammingDistance(hash, referenceHash);
-      if (distance <= HASH_THRESHOLD) {
+      const { matched } = await detectObject(photo.uri, targetLabel);
+      if (matched) {
         setStatus('一致しました');
         onGiveUp();
         return;
       }
       const nextAttempts = attempts + 1;
       setAttempts(nextAttempts);
-      setStatus(`一致しませんでした (差分 ${distance})`);
+      setStatus(`一致しませんでした (対象: ${targetLabel})`);
       if (nextAttempts >= MAX_ATTEMPTS) {
         triggerFallback('一致しないため別の解除へ切替');
       }
     } catch (error) {
-      if ((error as { code?: string })?.code === 'PHOTO_TOO_DARK') {
-        setStatus('暗すぎるため撮り直してください');
-        return;
-      }
-      console.warn('Failed to take photo', error);
-      setStatus('撮影に失敗しました');
+      const { code, message } = describeDetectError(error);
+      const hint = hintForErrorCode(code);
+      const debugMessage = [code, message, hint].filter(Boolean).join(' / ');
+      console.warn('Failed to detect object', { error, targetLabel });
+      setStatus(debugMessage ? `判定に失敗しました (${debugMessage})` : '判定に失敗しました');
     } finally {
       setIsCapturing(false);
     }
   };
 
-  const label = isRegister ? '参照写真を登録' : '証拠写真で解除';
+  const label = '写真で解除';
   const description = useMemo(() => {
-    if (isRegister) {
-      return 'この写真を解除の基準として登録します';
-    }
-    if (referenceHash) {
-      return `残り ${remainingAttempts} 回まで再撮影できます`;
-    }
-    return '参照写真が未登録です';
-  }, [isRegister, referenceHash, remainingAttempts]);
+    return `対象: ${targetLabel} / 残り ${remainingAttempts} 回まで再撮影できます`;
+  }, [targetLabel, remainingAttempts]);
 
   const buttonText = useMemo(() => {
     if (!permission?.granted) {
@@ -138,12 +136,13 @@ const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, mode = 'verify', on
     if (isCapturing) {
       return '撮影中...';
     }
-    return isRegister ? '撮影して登録' : '撮影して解除';
-  }, [isCapturing, isRegister, permission?.granted]);
+    return '撮影して解除';
+  }, [isCapturing, permission?.granted]);
 
   return (
     <AlarmFireLayout time={time} label={label} onGiveUp={onGiveUp} backgroundColor="#FF70A6">
       <Text style={styles.question}>撮影してください</Text>
+      <Text style={styles.targetLabel}>対象: {targetLabel}</Text>
       <View style={styles.cameraBox}>
         {permission?.granted ? (
           <CameraView ref={cameraRef} style={styles.cameraPreview} facing="back" />
@@ -175,7 +174,7 @@ const styles = StyleSheet.create({
   },
   cameraBox: {
     marginTop: 24,
-    height: 160,
+    height: 500,
     borderRadius: 24,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.7)',
@@ -205,6 +204,13 @@ const styles = StyleSheet.create({
   },
   captureText: {
     color: '#FF70A6',
+    fontWeight: '700'
+  },
+  targetLabel: {
+    color: '#fff',
+    marginTop: 8,
+    textAlign: 'center',
+    fontSize: 14,
     fontWeight: '700'
   },
   hint: {
