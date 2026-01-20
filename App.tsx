@@ -5,7 +5,6 @@ import HomeScreen from './src/screens/HomeScreen';
 import EditorScreen from './src/screens/EditorScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import AlarmDemoScreen from './src/screens/AlarmDemoScreen';
-import AlarmPhotoScreen from './src/screens/AlarmPhotoScreen';
 import { alarmsMock } from './src/data/alarms';
 import { Alarm, AlarmAction } from './src/types';
 import {
@@ -23,7 +22,7 @@ import {
 } from './src/services/alarmScheduler';
 import { theme } from './src/theme/colors';
 
-type Screen = 'home' | 'editor' | 'settings' | 'demo' | 'alarm' | 'photo-register';
+type Screen = 'home' | 'editor' | 'settings' | 'demo' | 'alarm';
 type DemoMode = AlarmAction | 'random';
 type AppProps = { alarm?: AlarmFirePayload };
 const RANDOM_MODES: AlarmAction[] = ['math', 'shake', 'photo'];
@@ -36,7 +35,6 @@ const App: React.FC<AppProps> = ({ alarm }) => {
   const [actionMode, setActionMode] = useState<'fixed' | 'random'>('random');
   const [demoMode, setDemoMode] = useState<DemoMode>('random');
   const [alarmPayload, setAlarmPayload] = useState<AlarmFirePayload | null>(() => alarm ?? null);
-  const [photoReferenceVersion, setPhotoReferenceVersion] = useState(0);
   const [alarmResolvedMode, setAlarmResolvedMode] = useState<AlarmAction | null>(() => {
     if (!alarm) {
       return null;
@@ -172,10 +170,6 @@ const App: React.FC<AppProps> = ({ alarm }) => {
     setScreen('demo');
   };
 
-  const openPhotoRegister = () => {
-    setScreen('photo-register');
-  };
-
   useEffect(() => {
     if (!alarmPayload) {
       setAlarmResolvedMode(null);
@@ -207,10 +201,6 @@ const App: React.FC<AppProps> = ({ alarm }) => {
       }
       if (screen === 'editor' || screen === 'settings' || screen === 'demo') {
         setScreen('home');
-        return true;
-      }
-      if (screen === 'photo-register') {
-        setScreen('settings');
         return true;
       }
       if (screen === 'alarm') {
@@ -283,8 +273,6 @@ const App: React.FC<AppProps> = ({ alarm }) => {
           actionMode={actionMode}
           onChangeMode={setActionMode}
           onShowDemo={openDemo}
-          onRegisterPhoto={openPhotoRegister}
-          photoReferenceVersion={photoReferenceVersion}
         />
       )}
 
@@ -294,17 +282,6 @@ const App: React.FC<AppProps> = ({ alarm }) => {
         <AlarmDemoScreen mode={alarmResolvedMode} time={fireTime} onComplete={completeAlarm} />
       )}
 
-      {screen === 'photo-register' && (
-        <AlarmPhotoScreen
-          time="--:--"
-          mode="register"
-          onGiveUp={() => setScreen('settings')}
-          onRegisterComplete={() => {
-            setPhotoReferenceVersion((prev) => prev + 1);
-            setScreen('settings');
-          }}
-        />
-      )}
       </SafeAreaView>
     </SafeAreaProvider>
   );

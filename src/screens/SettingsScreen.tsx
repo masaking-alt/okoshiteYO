@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, ScrollView, Alert, NativeModules } from 'react-native';
 import { AlarmAction } from '../types';
 import { palette, theme } from '../theme/colors';
-import { getPhotoReference } from '../services/photoReferenceStore';
 
 const QUICK_ALARM_OFFSET_MS = 10_000;
 
@@ -19,8 +18,6 @@ interface Props {
   actionMode: 'fixed' | 'random';
   onChangeMode: (mode: 'fixed' | 'random') => void;
   onShowDemo: (mode: 'random' | AlarmAction) => void;
-  onRegisterPhoto: () => void;
-  photoReferenceVersion: number;
 }
 
 const SettingsScreen: React.FC<Props> = ({
@@ -30,9 +27,7 @@ const SettingsScreen: React.FC<Props> = ({
   onPreviewAction,
   actionMode,
   onChangeMode,
-  onShowDemo,
-  onRegisterPhoto,
-  photoReferenceVersion
+  onShowDemo
 }) => {
   const [permissionState, setPermissionState] = useState<PermissionStateMap>({
     exact: 'needs',
@@ -40,7 +35,6 @@ const SettingsScreen: React.FC<Props> = ({
     dnd: 'needs',
     battery: 'info'
   });
-  const [photoRegistered, setPhotoRegistered] = useState(false);
 
   const togglePermission = (key: PermissionKey) => {
     setPermissionState((prev) => ({
@@ -48,26 +42,6 @@ const SettingsScreen: React.FC<Props> = ({
       [key]: prev[key] === 'granted' ? 'needs' : 'granted'
     }));
   };
-
-  useEffect(() => {
-    let isActive = true;
-    const loadReference = async () => {
-      try {
-        const reference = await getPhotoReference();
-        if (isActive) {
-          setPhotoRegistered(!!reference.hash);
-        }
-      } catch {
-        if (isActive) {
-          setPhotoRegistered(false);
-        }
-      }
-    };
-    loadReference();
-    return () => {
-      isActive = false;
-    };
-  }, [photoReferenceVersion]);
 
   const scheduleQuickAlarm = async () => {
     const alarmModule = NativeModules.AlarmModule as AlarmModuleType | undefined;
@@ -184,17 +158,6 @@ const SettingsScreen: React.FC<Props> = ({
           </View>
           <TouchableOpacity style={styles.secondaryButton} onPress={() => onShowDemo('random')}>
             <Text style={styles.secondaryButtonText}>選択UIを開く</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.sectionLabel}>写真解除</Text>
-        <View style={styles.rowCard}>
-          <View>
-            <Text style={styles.rowTitle}>参照写真を登録</Text>
-            <Text style={styles.rowSubtitle}>登録済み: {photoRegistered ? 'はい' : 'いいえ'}</Text>
-          </View>
-          <TouchableOpacity style={styles.secondaryButton} onPress={onRegisterPhoto}>
-            <Text style={styles.secondaryButtonText}>登録する</Text>
           </TouchableOpacity>
         </View>
 
