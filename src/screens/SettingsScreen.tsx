@@ -126,31 +126,9 @@ const SettingsScreen: React.FC<Props> = ({
           );
         })}
 
-        <Text style={styles.sectionLabel}>権限とシステム設定</Text>
-        {permissionItems(permissionState).map((item) => (
-          <View key={item.key} style={styles.rowCard}>
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={styles.rowTitle}>{item.title}</Text>
-              <Text style={styles.rowSubtitle}>{item.description}</Text>
-              <Text style={styles.helperText}>※ ネイティブ実装と連携して実際の状態を反映</Text>
-            </View>
-            <View style={styles.statusColumn}>
-              <StatusPill state={item.state} />
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => togglePermission(item.key)}>
-                <Text style={styles.secondaryButtonText}>{item.cta}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
-
+        
         <Text style={styles.sectionLabel}>通知 & サウンド</Text>
-        <View style={styles.rowCard}>
-          <View>
-            <Text style={styles.rowTitle}>端末のデフォルトアラーム音</Text>
-            <Text style={styles.rowSubtitle}>RingtoneManager で取得。権限不要。</Text>
-          </View>
-          <StatusPill state="granted" label="利用中" />
-        </View>
+        
         <View style={styles.rowCard}>
           <View>
             <Text style={styles.rowTitle}>端末内の音源を選ぶ</Text>
@@ -159,26 +137,6 @@ const SettingsScreen: React.FC<Props> = ({
           <TouchableOpacity style={styles.secondaryButton} onPress={() => onShowDemo('random')}>
             <Text style={styles.secondaryButtonText}>選択UIを開く</Text>
           </TouchableOpacity>
-        </View>
-
-        <Text style={styles.sectionLabel}>その他</Text>
-        <View style={styles.rowCard}>
-          <View>
-            <Text style={styles.rowTitle}>絶対起動モード</Text>
-            <Text style={styles.rowSubtitle}>バイブ + 最大音量 + フルスクリーン。DND貫通を前提。</Text>
-          </View>
-          <View style={styles.fakeSwitch}>
-            <View style={styles.fakeSwitchDot} />
-          </View>
-        </View>
-        <View style={styles.rowCard}>
-          <View>
-            <Text style={styles.rowTitle}>統計を記録</Text>
-            <Text style={styles.rowSubtitle}>解除時間を記録して週次レポートを表示（将来対応）。</Text>
-          </View>
-          <View style={[styles.fakeSwitch, { backgroundColor: 'transparent', borderColor: theme.divider }]}>
-            <View style={[styles.fakeSwitchDot, { backgroundColor: theme.divider, marginLeft: 0 }]} />
-          </View>
         </View>
 
         <TouchableOpacity style={styles.demoButton} activeOpacity={0.9} onPress={() => onShowDemo('random')}>
