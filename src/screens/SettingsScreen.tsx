@@ -91,22 +91,7 @@ const SettingsScreen: React.FC<Props> = ({
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        <Text style={styles.sectionLabel}>アクションモード</Text>
-        <View style={styles.modeRow}>
-          <TouchableOpacity
-            style={[styles.modeChip, actionMode === 'fixed' && styles.modeChipActive]}
-            onPress={() => onChangeMode('fixed')}
-          >
-            <Text style={[styles.modeChipText, actionMode === 'fixed' && styles.modeChipTextActive]}>選択制</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeChip, actionMode === 'random' && styles.modeChipActive]}
-            onPress={() => onChangeMode('random')}
-          >
-            <Text style={[styles.modeChipText, actionMode === 'random' && styles.modeChipTextActive]}>ランダム</Text>
-          </TouchableOpacity>
-        </View>
-
+       
         <Text style={styles.sectionLabel}>デフォルトの解除アクション</Text>
         {(['math', 'shake', 'photo'] as AlarmAction[]).map((action) => {
           const active = action === currentAction;
