@@ -1,12 +1,3 @@
 {
-  "devices": [
-    {
-      "installationId": "465a4870-081f-4026-b06f-e3f2464eda16",
-<<<<<<< HEAD
-      "lastUsed": 1768936418887
-=======
-      "lastUsed": 1768796001986
->>>>>>> add-alarm
-    }
-  ]
+  "devices": []
 }
