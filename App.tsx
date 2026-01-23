@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, BackHandler, DeviceEventEmitter, StatusBar, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from './src/screens/HomeScreen';
 import EditorScreen from './src/screens/EditorScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -26,9 +27,11 @@ type Screen = 'home' | 'editor' | 'settings' | 'demo' | 'alarm';
 type DemoMode = AlarmAction | 'random';
 type AppProps = { alarm?: AlarmFirePayload };
 const RANDOM_MODES: AlarmAction[] = ['math', 'shake', 'photo'];
+const ALARMS_STORAGE_KEY = 'alarms_storage_v1';
 
 const App: React.FC<AppProps> = ({ alarm }) => {
   const [alarms, setAlarms] = useState<Alarm[]>(alarmsMock);
+  const [alarmsLoaded, setAlarmsLoaded] = useState(false);
   const [screen, setScreen] = useState<Screen>(() => (alarm ? 'alarm' : 'home'));
   const [selectedAlarm, setSelectedAlarm] = useState<Alarm | undefined>(alarmsMock[0]);
   const [defaultAction, setDefaultAction] = useState<AlarmAction>('math');
@@ -60,6 +63,50 @@ const App: React.FC<AppProps> = ({ alarm }) => {
     });
     setScreen('alarm');
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadAlarms = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(ALARMS_STORAGE_KEY);
+        if (!active) {
+          return;
+        }
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setAlarms(parsed as Alarm[]);
+          } else {
+            setAlarms(alarmsMock);
+          }
+        } else {
+          setAlarms(alarmsMock);
+        }
+      } catch (error) {
+        console.warn('Failed to load alarms', error);
+        if (active) {
+          setAlarms(alarmsMock);
+        }
+      } finally {
+        if (active) {
+          setAlarmsLoaded(true);
+        }
+      }
+    };
+    loadAlarms();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!alarmsLoaded) {
+      return;
+    }
+    AsyncStorage.setItem(ALARMS_STORAGE_KEY, JSON.stringify(alarms)).catch((error) => {
+      console.warn('Failed to persist alarms', error);
+    });
+  }, [alarms, alarmsLoaded]);
 
   const ensureSchedulePermissions = async () => {
     const exactAllowed = await canScheduleExactAlarms();
