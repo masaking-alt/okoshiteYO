@@ -9,6 +9,9 @@ type AlarmModuleType = {
   ) => Promise<boolean>;
   cancelAlarm: (alarmId: string) => Promise<boolean>;
   stopAlarm: () => Promise<boolean>;
+  finishAlarmActivity?: () => Promise<boolean>;
+  getPendingAlarm?: () => Promise<AlarmFirePayload | null>;
+  clearPendingAlarm?: () => Promise<boolean>;
   canScheduleExactAlarms?: () => Promise<boolean>;
   openExactAlarmSettings?: () => Promise<boolean>;
   openNotificationSettings?: () => Promise<boolean>;
@@ -189,6 +192,27 @@ export const stopAlarm = async (): Promise<boolean> => {
   }
   await alarmModule.stopAlarm();
   return true;
+};
+
+export const finishAlarmActivity = async (): Promise<boolean> => {
+  if (!hasAlarmModule || !alarmModule?.finishAlarmActivity) {
+    return false;
+  }
+  return alarmModule.finishAlarmActivity();
+};
+
+export const getPendingAlarm = async (): Promise<AlarmFirePayload | null> => {
+  if (!hasAlarmModule || !alarmModule?.getPendingAlarm) {
+    return null;
+  }
+  return alarmModule.getPendingAlarm();
+};
+
+export const clearPendingAlarm = async (): Promise<boolean> => {
+  if (!hasAlarmModule || !alarmModule?.clearPendingAlarm) {
+    return false;
+  }
+  return alarmModule.clearPendingAlarm();
 };
 
 export const canScheduleExactAlarms = async (): Promise<boolean> => {

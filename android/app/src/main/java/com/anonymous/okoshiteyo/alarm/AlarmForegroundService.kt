@@ -21,8 +21,12 @@ import android.os.PowerManager
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
+import com.anonymous.okoshiteyo.BuildConfig
 import com.anonymous.okoshiteyo.R
+
+private const val TAG = "AlarmForegroundService"
 
 class AlarmForegroundService : Service() {
     private val alarmAudioAttributes = AudioAttributes.Builder()
@@ -61,6 +65,10 @@ class AlarmForegroundService : Service() {
             return START_NOT_STICKY
         }
         val payload = intent?.extras
+        if (BuildConfig.DEBUG) {
+            val keys = payload?.keySet()?.joinToString(",") ?: ""
+            Log.d(TAG, "onStartCommand action=${intent?.action} extrasKeys=[$keys]")
+        }
         ensureChannel()
 
         val fullScreenPending = createFullScreenPendingIntent(payload)

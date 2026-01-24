@@ -9,12 +9,15 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
+import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
 import com.facebook.react.bridge.ReadableArray
 import com.facebook.react.bridge.ReadableMap
+import android.util.Log
+import com.anonymous.okoshiteyo.BuildConfig
 import java.io.File
 import java.io.InputStream
 
@@ -78,6 +81,17 @@ class AlarmModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
     }
 
     @ReactMethod
+    fun finishAlarmActivity(promise: Promise) {
+        val activity = reactApplicationContext.currentActivity
+        if (activity is AlarmRingingActivity) {
+            activity.finish()
+            promise.resolve(true)
+            return
+        }
+        promise.resolve(false)
+    }
+
+    @ReactMethod
     fun canScheduleExactAlarms(promise: Promise) {
         val allowed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val alarmManager = reactApplicationContext.getSystemService(AlarmManager::class.java)
@@ -136,6 +150,25 @@ class AlarmModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
             return
         }
         promise.resolve(matched)
+    }
+
+    @ReactMethod
+    fun getPendingAlarm(promise: Promise) {
+        if (BuildConfig.DEBUG) {
+            Log.d("AlarmModule", "getPendingAlarm")
+        }
+        val payload = AlarmPendingStore.peek(reactApplicationContext)
+        if (payload == null) {
+            promise.resolve(null)
+            return
+        }
+        promise.resolve(Arguments.fromBundle(payload))
+    }
+
+    @ReactMethod
+    fun clearPendingAlarm(promise: Promise) {
+        AlarmPendingStore.clear(reactApplicationContext)
+        promise.resolve(true)
     }
 
     private fun scheduleInternal(
