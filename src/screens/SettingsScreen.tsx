@@ -92,13 +92,13 @@ const SettingsScreen: React.FC<Props> = ({
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
        
-        <Text style={styles.sectionLabel}>デフォルトの解除アクション</Text>
+        <Text style={styles.sectionLabel}>解除アクション</Text>
         {(['math', 'shake', 'photo'] as AlarmAction[]).map((action) => {
           const active = action === currentAction;
           return (
             <TouchableOpacity
               key={action}
-              style={[styles.rowCard, active && styles.rowCardActive]}
+              style={[styles.rowCard]}
               onPress={() => onSelectAction(action)}
               onLongPress={() => onPreviewAction(action)}
             >
@@ -106,23 +106,13 @@ const SettingsScreen: React.FC<Props> = ({
                 <Text style={styles.rowTitle}>{titleFor(action)}</Text>
                 <Text style={styles.rowSubtitle}>{subtitleFor(action)}</Text>
               </View>
-              <Text style={[styles.rowStatus, active && styles.rowStatusActive]}>{active ? '使用中' : '長押しでプレビュー'}</Text>
+              <Text style={[styles.rowStatus]}>
+              長押しでプレビュー
+              </Text>
             </TouchableOpacity>
           );
         })}
 
-        
-        <Text style={styles.sectionLabel}>通知 & サウンド</Text>
-        
-        <View style={styles.rowCard}>
-          <View>
-            <Text style={styles.rowTitle}>端末内の音源を選ぶ</Text>
-            <Text style={styles.rowSubtitle}>SAF (ACTION_OPEN_DOCUMENT) で音源を指定。外部ストレージ権限不要。</Text>
-          </View>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => onShowDemo('random')}>
-            <Text style={styles.secondaryButtonText}>選択UIを開く</Text>
-          </TouchableOpacity>
-        </View>
 
         <TouchableOpacity style={styles.demoButton} activeOpacity={0.9} onPress={() => onShowDemo('random')}>
           <Text style={styles.demoText}>デモ画面を再生</Text>
@@ -163,11 +153,11 @@ const titleFor = (action: AlarmAction) => {
 const subtitleFor = (action: AlarmAction) => {
   switch (action) {
     case 'math':
-      return '寝ぼけ頭を一気に起こす問題';
+      return '計算を3問解いて解除';
     case 'shake':
-      return '体を動かして強制的に覚醒';
+      return 'スマホを50回振って解除';
     case 'photo':
-      return '登録スポットに移動しないと解除不可';
+      return '指定された物を撮影して解除';
     default:
       return '';
   }

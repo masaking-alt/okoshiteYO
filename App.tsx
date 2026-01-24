@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Alert, BackHandler, DeviceEventEmitter, StatusBar, StyleSheet } from 'react-native';
+import { Alert, AppState, BackHandler, DeviceEventEmitter, StatusBar, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from './src/screens/HomeScreen';
 import EditorScreen from './src/screens/EditorScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
@@ -13,8 +14,11 @@ import {
   buildScheduleInputFromPayload,
   cancelAlarm,
   canScheduleExactAlarms,
+  clearPendingAlarm,
   coerceFireMode,
   ensureNotificationPermission,
+  finishAlarmActivity,
+  getPendingAlarm,
   openExactAlarmSettings,
   openNotificationSettings,
   scheduleAlarm,
@@ -24,11 +28,16 @@ import { theme } from './src/theme/colors';
 
 type Screen = 'home' | 'editor' | 'settings' | 'demo' | 'alarm';
 type DemoMode = AlarmAction | 'random';
-type AppProps = { alarm?: AlarmFirePayload };
+type EntryPoint = 'main' | 'alarm';
+type AppProps = { alarm?: AlarmFirePayload; entryPoint?: EntryPoint };
 const RANDOM_MODES: AlarmAction[] = ['math', 'shake', 'photo'];
+const ALARMS_STORAGE_KEY = 'alarms_storage_v1';
 
-const App: React.FC<AppProps> = ({ alarm }) => {
+const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
+  const resolvedEntryPoint: EntryPoint = entryPoint ?? (alarm ? 'alarm' : 'main');
+  const shouldHandleAlarm = resolvedEntryPoint === 'alarm';
   const [alarms, setAlarms] = useState<Alarm[]>(alarmsMock);
+  const [alarmsLoaded, setAlarmsLoaded] = useState(false);
   const [screen, setScreen] = useState<Screen>(() => (alarm ? 'alarm' : 'home'));
   const [selectedAlarm, setSelectedAlarm] = useState<Alarm | undefined>(alarmsMock[0]);
   const [defaultAction, setDefaultAction] = useState<AlarmAction>('math');
@@ -49,6 +58,12 @@ const App: React.FC<AppProps> = ({ alarm }) => {
   };
 
   const handleIncomingAlarm = useCallback((payload?: AlarmFirePayload | null) => {
+    if (__DEV__) {
+      console.log('[AlarmDebug] handleIncomingAlarm', payload);
+    }
+    if (!shouldHandleAlarm) {
+      return;
+    }
     if (!payload?.alarm_id) {
       return;
     }
@@ -60,6 +75,50 @@ const App: React.FC<AppProps> = ({ alarm }) => {
     });
     setScreen('alarm');
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadAlarms = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(ALARMS_STORAGE_KEY);
+        if (!active) {
+          return;
+        }
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setAlarms(parsed as Alarm[]);
+          } else {
+            setAlarms(alarmsMock);
+          }
+        } else {
+          setAlarms(alarmsMock);
+        }
+      } catch (error) {
+        console.warn('Failed to load alarms', error);
+        if (active) {
+          setAlarms(alarmsMock);
+        }
+      } finally {
+        if (active) {
+          setAlarmsLoaded(true);
+        }
+      }
+    };
+    loadAlarms();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!alarmsLoaded) {
+      return;
+    }
+    AsyncStorage.setItem(ALARMS_STORAGE_KEY, JSON.stringify(alarms)).catch((error) => {
+      console.warn('Failed to persist alarms', error);
+    });
+  }, [alarms, alarmsLoaded]);
 
   const ensureSchedulePermissions = async () => {
     const exactAllowed = await canScheduleExactAlarms();
@@ -189,19 +248,66 @@ const App: React.FC<AppProps> = ({ alarm }) => {
   }, [alarmPayload]);
 
   useEffect(() => {
+    if (!shouldHandleAlarm) {
+      return;
+    }
+    let active = true;
+    const loadPending = () => {
+      getPendingAlarm()
+        .then((payload) => {
+          if (__DEV__) {
+            console.log('[AlarmDebug] getPendingAlarm result', payload);
+          }
+          if (!active || !payload) {
+            return;
+          }
+          handleIncomingAlarm(payload);
+        })
+        .catch((error) => {
+          if (!active) {
+            return;
+          }
+          console.warn('Failed to load pending alarm', error);
+        });
+    };
+    loadPending();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (__DEV__) {
+        console.log('[AlarmDebug] AppState change', state);
+      }
+      if (state === 'active') {
+        loadPending();
+      }
+    });
+    return () => {
+      active = false;
+      subscription.remove();
+    };
+  }, [handleIncomingAlarm, shouldHandleAlarm]);
+
+  useEffect(() => {
+    if (!shouldHandleAlarm) {
+      return;
+    }
     if (alarm) {
       handleIncomingAlarm(alarm);
     }
-  }, [alarm, handleIncomingAlarm]);
+  }, [alarm, handleIncomingAlarm, shouldHandleAlarm]);
 
   useEffect(() => {
+    if (!shouldHandleAlarm) {
+      return;
+    }
     const subscription = DeviceEventEmitter.addListener('AlarmFired', (payload) => {
+      if (__DEV__) {
+        console.log('[AlarmDebug] DeviceEventEmitter AlarmFired', payload);
+      }
       handleIncomingAlarm(payload as AlarmFirePayload);
     });
     return () => {
       subscription.remove();
     };
-  }, [handleIncomingAlarm]);
+  }, [handleIncomingAlarm, shouldHandleAlarm]);
 
   useEffect(() => {
     const onBackPress = () => {
@@ -225,6 +331,9 @@ const App: React.FC<AppProps> = ({ alarm }) => {
 
   const completeAlarm = async () => {
     await stopAlarm();
+    finishAlarmActivity().catch((error) => {
+      console.warn('Failed to finish alarm activity', error);
+    });
     const reschedule = alarmPayload ? buildScheduleInputFromPayload(alarmPayload) : null;
     if (reschedule && reschedule.repeatDays.length > 0) {
       try {
@@ -233,6 +342,9 @@ const App: React.FC<AppProps> = ({ alarm }) => {
         console.warn('Failed to reschedule alarm', error);
       }
     }
+    clearPendingAlarm().catch((error) => {
+      console.warn('Failed to clear pending alarm', error);
+    });
     setAlarmPayload(null);
     setScreen('home');
   };
