@@ -41,15 +41,16 @@ const HomeScreen: React.FC<Props> = ({ alarms, onCreate, onEdit, onOpenSettings,
       />
 
       {/* アラームが0個の時だけ表示されるメッセージ */}
-      {alarms.length === 0 && (
-        <View style={styles.hintBubble}>
-          <Text style={styles.hintText}>ここからアラームを追加してね！</Text>
-          <View style={styles.hintArrow} /> {/* 下向きの矢印部分 */}
-        </View>
-      )}
-      <TouchableOpacity style={styles.fab} onPress={onCreate} activeOpacity={0.9}>
-        <Text style={styles.fabText}>＋</Text>
-      </TouchableOpacity>
+       {alarms.length === 0 ? (
+          <View style={styles.hintBubble}>
+            <Text style={styles.hintText}>ここからアラームを追加してね！</Text>
+            <View style={styles.hintArrow} />
+          </View>
+        ) : null}
+
+        <TouchableOpacity style={styles.fab} onPress={onCreate} activeOpacity={0.9}>
+          <Text style={styles.fabText}>＋</Text>
+        </TouchableOpacity>
     </View>
   );
 };
