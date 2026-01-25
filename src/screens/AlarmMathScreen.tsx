@@ -43,7 +43,7 @@ const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
       case 'wrong':
         return '違います。もう一度。';
       default:
-        return '正解を選んで解除';
+        return '正解を入力して解除';
     }
   }, [status]);
 
