@@ -1,12 +1,11 @@
 package com.anonymous.okoshiteyo
 
 import android.os.Build
-import android.os.Bundle
-
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
 import com.facebook.react.defaults.DefaultReactActivityDelegate
+import android.os.Bundle
 
 import expo.modules.ReactActivityDelegateWrapper
 
@@ -37,7 +36,13 @@ class MainActivity : ReactActivity() {
               this,
               mainComponentName,
               fabricEnabled
-          ){})
+          ) {
+            override fun getLaunchOptions(): Bundle? {
+              return Bundle().apply {
+                putString("entryPoint", "main")
+              }
+            }
+          })
   }
 
   /**

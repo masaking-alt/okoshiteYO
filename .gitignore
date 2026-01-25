@@ -8,8 +8,15 @@ build
 *.env.development
 *.env.production
 android/.gradle/
+android/build/
 android/app/build/
 android/app/.cxx/
 android/app/debug.keystore
+android/local.properties
+*.apk
+*.aab
+*.keystore
+*.jks
+.expo-shared
 .idea/
 *.iml
