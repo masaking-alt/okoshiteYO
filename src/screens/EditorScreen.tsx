@@ -16,9 +16,9 @@ interface Props {
 const days = ['月', '火', '水', '木', '金', '土', '日'];
 
 const actionOptions: { key: AlarmAction; title: string; hint: string; accent: string }[] = [
-  { key: 'math', title: '計算チャレンジ', hint: '計算を3問解いて解除', accent: palette.sunrise },
-  { key: 'shake', title: 'シェイク解除', hint: 'スマホを50回振って解除', accent: palette.sunrise },
-  { key: 'photo', title: '証拠ショット', hint: '指定された物を撮影して解除', accent: palette.sunrise }
+  { key: 'math', title: '計算チャレンジ', hint: '3問解かないと止まらない', accent: palette.sunrise },
+  { key: 'shake', title: 'シェイク解除', hint: '50回振ると解除', accent: palette.mint },
+  { key: 'photo', title: '証拠ショット', hint: '登録した場所を撮影', accent: palette.lavender }
 ];
 
 interface TimePickerProps {
@@ -84,8 +84,8 @@ const EditorScreen: React.FC<Props> = ({
   const [minutes, setMinutes] = useState<string>((alarm?.time ?? '07:30').split(':')[1]);
   const [mode, setMode] = useState<'fixed' | 'random'>(alarm?.mode ?? defaultMode);
   const [selectedAction, setSelectedAction] = useState<AlarmAction>(alarm?.action ?? defaultAction);
-  const [repeatDays, setRepeatDays] = useState<string[]>(alarm?.repeatDays ?? ['月', '火', '水', '木', '金','土','日']);
-  const [memo, setMemo] = useState<string>(alarm?.title ?? '');
+  const [repeatDays, setRepeatDays] = useState<string[]>(alarm?.repeatDays ?? ['月', '火', '水', '木', '金']);
+  const [memo, setMemo] = useState<string>(alarm?.note ?? '');
 
   const toggleDay = (day: string) => {
     setRepeatDays((prev) => {
@@ -96,6 +96,15 @@ const EditorScreen: React.FC<Props> = ({
     });
   };
 
+  const requirementText = useMemo(() => {
+    if (selectedAction === 'photo') {
+      return '写真解除にはカメラ + 位置許可が必要。拒否された場合は自動で計算 or シェイクに切替。';
+    }
+    if (selectedAction === 'shake') {
+      return 'シェイク解除はセンサーが必要。音量・バイブは絶対起動モードを使用。';
+    }
+    return '計算チャレンジは3〜5問を出題。難易度は後で調整可能。';
+  }, [selectedAction]);
 
   const handleSave = () => {
     // 空白または未入力の場合は「00」にする
@@ -104,11 +113,13 @@ const EditorScreen: React.FC<Props> = ({
     
     const payload: Alarm = {
       id: alarm?.id ?? Date.now().toString(),
+      title: '新しいアラーム',
       time: `${finalHour}:${finalMinutes}`,
       repeatDays,
       action: selectedAction,
       mode,
-      active: alarm?.active ?? true
+      active: alarm?.active ?? false,
+      note: memo || ''
     };
     onSave(payload);
   };
@@ -131,11 +142,13 @@ const EditorScreen: React.FC<Props> = ({
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         <Text style={styles.label}>時刻</Text>
+        <View style={styles.timeDisplayWrapper}>
           <View style={styles.timeInputRow}>
             <TimePicker value={hour} onValueChange={setHour} type="hour" />
             <Text style={styles.timeColon}>:</Text>
             <TimePicker value={minutes} onValueChange={setMinutes} type="minute" />
           </View>
+        </View>
         <View style={styles.dayRow}>
           {days.map((day) => {
             const active = repeatDays.includes(day);
@@ -185,7 +198,7 @@ const EditorScreen: React.FC<Props> = ({
                   <Text style={styles.actionTitle}>{action.title}</Text>
                   <Text style={styles.actionHint}>{action.hint}</Text>
                 </View>
-                <View style={[styles.actionBadge]}>
+                <View style={[styles.actionBadge, { backgroundColor: action.accent }]}>
                   <Text style={styles.actionBadgeText}>{active ? '選択中' : '長押しでプレビュー'}</Text>
                 </View>
               </TouchableOpacity>
@@ -195,11 +208,19 @@ const EditorScreen: React.FC<Props> = ({
         {mode === 'random' && (
           <View style={styles.randomNotice}>
             <Text style={styles.actionTitle}>ランダムアクション</Text>
-            <Text style={styles.randomHelper}>計算 / シェイク / 証拠ショットの3種類からランダムに出題されます。</Text>
+            <Text style={styles.randomHelper}>計算 / シェイク / 証拠ショットの3種類から毎回ランダムに出題されます。</Text>
           </View>
         )}
 
-
+        <View style={styles.requirementCard}>
+          <Text style={styles.requirementTitle}>解除条件のメモ</Text>
+          <Text style={styles.requirementText}>{requirementText}</Text>
+          {selectedAction === 'photo' && (
+            <Text style={styles.requirementFootnote}>
+              写真ミッションが使えないときは計算問題またはシェイクへ自動フォールバックします。
+            </Text>
+          )}
+        </View>
 
         <Text style={styles.label}>メモ</Text>
         <TextInput
@@ -255,11 +276,26 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 12
   },
+  timeDisplayWrapper: {
+    backgroundColor: theme.card,
+    borderRadius: 16,
+    paddingVertical: 20,
+    paddingHorizontal: 16,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: palette.sunrise,
+    alignItems: 'center',
+    shadowColor: palette.sunrise,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4
+  },
   timeInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10
+    gap: 8
   },
   timeInputWrapper: {
     alignSelf: 'flex-start'
@@ -267,15 +303,15 @@ const styles = StyleSheet.create({
   timeInput: {
     backgroundColor: palette.white,
     borderRadius: 12,
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: palette.sunrise,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    fontSize: 72,
+    fontSize: 32,
     fontWeight: '700',
-    color: palette.black,
+    color: palette.sunrise,
     textAlign: 'center',
-    width: 150
+    width: 70
   },
   timeValueDisplay: {
     backgroundColor: palette.white,
@@ -295,7 +331,7 @@ const styles = StyleSheet.create({
   timeColon: {
     fontSize: 40,
     fontWeight: '700',
-    color: palette.black
+    color: palette.sunrise
   },
   digitPickerWrapper: {
     backgroundColor: theme.card,

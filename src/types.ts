@@ -8,4 +8,6 @@ export interface Alarm {
   action: AlarmAction;
   mode: 'fixed' | 'random';
   active: boolean;
+  note?: string;
 }
+

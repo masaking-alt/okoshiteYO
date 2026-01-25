@@ -25,20 +25,20 @@ const createQuestion = (): Question => {
 };
 
 const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
-  const [question] = useState<Question>(() => createQuestion());
+  const [question,setQuestion] = useState<Question>(() => createQuestion());
+  const [solvedCount, setSolvedCount] = useState(0); //正解した数を数える
   const [status, setStatus] = useState<'idle' | 'wrong' | 'correct'>('idle');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const REQUIRED_SOLVES = 3;
+
   const statusText = useMemo(() => {
-    switch (status) {
-      case 'correct':
-        return '正解！解除中...';
-      case 'wrong':
-        return '違います。もう一度。';
-      default:
-        return '正解を選んで解除';
+     if (status === 'correct') {
+      return solvedCount + 1 >= REQUIRED_SOLVES ? '全問正解！解除中...' : '正解！次の問題へ...';
     }
-  }, [status]);
+    if (status === 'wrong') return '違います。もう一度。';
+    return `あと ${REQUIRED_SOLVES - solvedCount} 問正解で解除`; // ★あと何問か表示
+  }, [status, solvedCount]);
 
   const handleAnswer = (value: number) => {
     if (status === 'correct') {
@@ -47,8 +47,18 @@ const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
     if (value === question.answer) {
       setStatus('correct');
       timerRef.current = setTimeout(() => {
-        onGiveUp();
-      }, 400);
+        const nextCount = solvedCount + 1;
+
+        if (nextCount >= REQUIRED_SOLVES) {
+          // ★3回正解したらアラーム停止
+          onGiveUp();
+        } else {
+          // ★まだなら、新しい問題を作ってリセット
+          setSolvedCount(nextCount);
+          setQuestion(createQuestion()); // 新しい問題
+          setStatus('idle'); // 状態を戻す
+        }
+      }, 600); // 0.6秒だけ余韻（正解！という文字を見せる）
       return;
     }
     setStatus('wrong');
