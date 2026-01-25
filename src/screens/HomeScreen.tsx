@@ -40,6 +40,13 @@ const HomeScreen: React.FC<Props> = ({ alarms, onCreate, onEdit, onOpenSettings,
         contentContainerStyle={{ paddingBottom: 120 }}
       />
 
+      {/* アラームが0個の時だけ表示されるメッセージ */}
+      {alarms.length === 0 && (
+        <View style={styles.hintBubble}>
+          <Text style={styles.hintText}>ここからアラームを追加してね！</Text>
+          <View style={styles.hintArrow} /> {/* 下向きの矢印部分 */}
+        </View>
+      )}
       <TouchableOpacity style={styles.fab} onPress={onCreate} activeOpacity={0.9}>
         <Text style={styles.fabText}>＋</Text>
       </TouchableOpacity>
@@ -103,7 +110,39 @@ const styles = StyleSheet.create({
     color: palette.white,
     fontSize: 30,
     lineHeight: 32
-  }
+  },
+  hintBubble: {
+    position: 'absolute',
+    bottom: 105, // ＋ボタン（32+60=92）の少し上に配置
+    right: 24,
+    backgroundColor: palette.sunrise, // ボタンと同じ色にすると統一感が出ます
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    // 影をつけて浮かせる
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  hintText: {
+    color: '#fff',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  hintArrow: {
+    position: 'absolute',
+    bottom: -8, // 吹き出しのすぐ下に配置
+    right: 20,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 8,
+    borderRightWidth: 8,
+    borderTopWidth: 10,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    borderTopColor: palette.sunrise, // 吹き出し本体と同じ色にする
+  },
 });
 
 export default HomeScreen;
