@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, View, Text, StyleSheet, TextInput, Keyboard } from 'react-native';
 import AlarmFireLayout from '../components/AlarmFireLayout';
 import { FireProps } from './fire/types';
 
@@ -27,6 +27,8 @@ const createQuestion = (): Question => {
 const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
   const [question] = useState<Question>(() => createQuestion());
   const [status, setStatus] = useState<'idle' | 'wrong' | 'correct'>('idle');
+  const [inputValue, setInputValue] = useState<string>('');
+  const inputRef = useRef<TextInput | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const statusText = useMemo(() => {
@@ -54,6 +56,16 @@ const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
     setStatus('wrong');
   };
 
+  const handleSubmit = () => {
+    const parsed = parseInt(inputValue, 10);
+    if (Number.isNaN(parsed)) {
+      setStatus('wrong');
+      return;
+    }
+    handleAnswer(parsed);
+    Keyboard.dismiss();
+  };
+
   useEffect(() => {
     return () => {
       if (timerRef.current) {
@@ -69,11 +81,21 @@ const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
       </Text>
       <Text style={styles.status}>{statusText}</Text>
       <View style={styles.answerRow}>
-        {question.options.map((ans) => (
-          <TouchableOpacity key={ans} style={styles.answerBox} onPress={() => handleAnswer(ans)} activeOpacity={0.85}>
-            <Text style={styles.answerText}>{ans}</Text>
-          </TouchableOpacity>
-        ))}
+        <TextInput
+          ref={inputRef}
+          style={styles.input}
+          value={inputValue}
+          onChangeText={(t) => setInputValue(t)}
+          placeholder="答えを入力"
+          placeholderTextColor="rgba(255,255,255,0.6)"
+          keyboardType="numeric"
+          returnKeyType="done"
+          editable={status !== 'correct'}
+          onSubmitEditing={handleSubmit}
+        />
+        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} activeOpacity={0.85}>
+          <Text style={styles.submitText}>確認</Text>
+        </TouchableOpacity>
       </View>
     </AlarmFireLayout>
   );
@@ -94,7 +116,8 @@ const styles = StyleSheet.create({
   },
   answerRow: {
     flexDirection: 'row',
-    marginTop: 20
+    marginTop: 20,
+    alignItems: 'center'
   },
   answerBox: {
     flex: 1,
@@ -107,6 +130,32 @@ const styles = StyleSheet.create({
   answerText: {
     color: '#fff',
     fontSize: 20,
+    fontWeight: '700'
+  }
+  ,
+  input: {
+    flex: 1,
+    marginHorizontal: 6,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    color: '#fff',
+    fontSize: 18,
+    textAlign: 'center'
+  },
+  submitButton: {
+    marginLeft: 6,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  submitText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '700'
   }
 });
