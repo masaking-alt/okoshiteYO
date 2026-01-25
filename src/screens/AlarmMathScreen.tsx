@@ -25,11 +25,14 @@ const createQuestion = (): Question => {
 };
 
 const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
-  const [question] = useState<Question>(() => createQuestion());
+  const [questions] = useState<Question[]>(() => [createQuestion(), createQuestion(), createQuestion()]);
+  const [index, setIndex] = useState<number>(0);
   const [status, setStatus] = useState<'idle' | 'wrong' | 'correct'>('idle');
   const [inputValue, setInputValue] = useState<string>('');
   const inputRef = useRef<TextInput | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const current = questions[index];
 
   const statusText = useMemo(() => {
     switch (status) {
@@ -46,10 +49,18 @@ const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
     if (status === 'correct') {
       return;
     }
-    if (value === question.answer) {
+    if (value === current.answer) {
       setStatus('correct');
       timerRef.current = setTimeout(() => {
-        onGiveUp();
+        if (index === questions.length - 1) {
+          onGiveUp();
+        } else {
+          setIndex((i) => i + 1);
+          setStatus('idle');
+          setInputValue('');
+          // focus next input
+          setTimeout(() => inputRef.current?.focus(), 50);
+        }
       }, 400);
       return;
     }
@@ -76,8 +87,9 @@ const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
 
   return (
     <AlarmFireLayout time={time} label="計算を解かないと止まらない" onGiveUp={onGiveUp}>
+      <Text style={styles.progress}>問題 {index + 1} / {questions.length}</Text>
       <Text style={styles.question}>
-        {question.left} + {question.right} = ?
+        {current.left} + {current.right} = ?
       </Text>
       <Text style={styles.status}>{statusText}</Text>
       <View style={styles.answerRow}>
@@ -157,6 +169,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '700'
+  }
+  ,
+  progress: {
+    color: '#fff',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 8
   }
 });
 
