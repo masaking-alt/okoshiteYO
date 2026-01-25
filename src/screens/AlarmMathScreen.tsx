@@ -31,6 +31,8 @@ const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
   const [inputValue, setInputValue] = useState<string>('');
   const inputRef = useRef<TextInput | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [locked, setLocked] = useState<boolean>(false);
+  const wrongTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const current = questions[index];
 
@@ -64,10 +66,22 @@ const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
       }, 400);
       return;
     }
+    // wrong: disable input for ~3s
     setStatus('wrong');
+    setLocked(true);
+    if (wrongTimerRef.current) {
+      clearTimeout(wrongTimerRef.current);
+    }
+    wrongTimerRef.current = setTimeout(() => {
+      setStatus('idle');
+      setLocked(false);
+      setInputValue('');
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }, 3000);
   };
 
   const handleSubmit = () => {
+    if (locked || status === 'correct') return;
     const parsed = parseInt(inputValue, 10);
     if (Number.isNaN(parsed)) {
       setStatus('wrong');
@@ -81,6 +95,9 @@ const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
     return () => {
       if (timerRef.current) {
         clearTimeout(timerRef.current);
+      }
+      if (wrongTimerRef.current) {
+        clearTimeout(wrongTimerRef.current);
       }
     };
   }, []);
@@ -102,10 +119,18 @@ const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
           placeholderTextColor="rgba(255,255,255,0.6)"
           keyboardType="numeric"
           returnKeyType="done"
-          editable={status !== 'correct'}
+          editable={!locked && status !== 'correct'}
           onSubmitEditing={handleSubmit}
         />
-        <TouchableOpacity style={styles.submitButton} onPress={handleSubmit} activeOpacity={0.85}>
+        <TouchableOpacity
+          style={[styles.submitButton, locked || status === 'correct' ? { opacity: 0.6 } : undefined]}
+          onPress={() => {
+            if (!locked && status !== 'correct') {
+              handleSubmit();
+            }
+          }}
+          activeOpacity={0.85}
+        >
           <Text style={styles.submitText}>確認</Text>
         </TouchableOpacity>
       </View>
