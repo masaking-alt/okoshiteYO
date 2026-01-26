@@ -4,7 +4,7 @@ import { Accelerometer } from 'expo-sensors';
 import AlarmFireLayout from '../components/AlarmFireLayout';
 import { FireProps } from './fire/types';
 
-const TARGET_SHAKES = 5;
+const TARGET_SHAKES = 50;
 const SHAKE_THRESHOLD = 0.8;
 const SHAKE_COOLDOWN_MS = 350;
 const UPDATE_INTERVAL_MS = 100;
@@ -59,7 +59,7 @@ const AlarmShakeScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
   const progressWidth = `${Math.min(100, (shakeCount / TARGET_SHAKES) * 100)}%`;
 
   return (
-    <AlarmFireLayout time={time} label="端末を振って解除" onGiveUp={onGiveUp} backgroundColor="#FFD166">
+    <AlarmFireLayout time={time} label="端末を振って解除" onGiveUp={onGiveUp} backgroundColor="#FFD166" showGiveUpButton={false}>
       <Text style={styles.question}>残り {remaining} シェイク！</Text>
       {!sensorAvailable && <Text style={styles.hint}>この端末では加速度センサーが使えません。</Text>}
       <View style={styles.progressOuter}>

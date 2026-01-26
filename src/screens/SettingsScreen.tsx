@@ -114,24 +114,6 @@ const SettingsScreen: React.FC<Props> = ({
         })}
 
 
-        <TouchableOpacity style={styles.demoButton} activeOpacity={0.9} onPress={() => onShowDemo('random')}>
-          <Text style={styles.demoText}>デモ画面を再生</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.demoButton, styles.testButton]} activeOpacity={0.9} onPress={scheduleQuickAlarm}>
-          <Text style={styles.demoText}>Test Alarm (10s)</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.demoButton, styles.stopButton]} activeOpacity={0.9} onPress={stopAlarm}>
-          <Text style={styles.demoText}>Stop Alarm</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.demoButton, styles.testButton]} activeOpacity={0.9} onPress={() => onShowDemo('math')}>
-          <Text style={styles.demoText}>Alarm Math Screen</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.demoButton, styles.testButton]} activeOpacity={0.9} onPress={() => onShowDemo('shake')}>
-          <Text style={styles.demoText}>Alarm Shake Screen</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[styles.demoButton, styles.testButton]} activeOpacity={0.9} onPress={() => onShowDemo('photo')}>
-          <Text style={styles.demoText}>Alarm Photo Screen</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );

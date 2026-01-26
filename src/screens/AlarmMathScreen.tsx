@@ -63,7 +63,7 @@ const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
   }, []);
 
   return (
-    <AlarmFireLayout time={time} label="計算を解かないと止まらない" onGiveUp={onGiveUp}>
+    <AlarmFireLayout time={time} label="計算を解かないと止まらない" onGiveUp={onGiveUp} showGiveUpButton={false}>
       <Text style={styles.question}>
         {question.left} + {question.right} = ?
       </Text>

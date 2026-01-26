@@ -12,26 +12,26 @@ type Props = FireProps & {
 const MAX_ATTEMPTS = 3;
 const FALLBACK_MODES: FireMode[] = ['math', 'shake'];
 const TARGET_LABELS = [
-  'scissors',
-  'keyboard',
-  'mouse',
-  'bottle',
-  'remote',
-  'book',
-  'cup',
-  'laptop',
-  'tv',
-  'chair',
-  'couch',
-  'dining table',
-  'potted plant',
-  'clock',
-  'vase',
-  'bowl',
-  'spoon',
-  'fork',
+  { en: 'scissors', ja: 'はさみ' },
+  { en: 'keyboard', ja: 'キーボード' },
+  { en: 'mouse', ja: 'マウス' },
+  { en: 'bottle', ja: '瓶・ボトル' },
+  { en: 'remote', ja: 'リモコン' },
+  { en: 'book', ja: '本' },
+  { en: 'cup', ja: 'カップ・コップ' },
+  { en: 'laptop', ja: 'ノートパソコン' },
+  { en: 'tv', ja: 'テレビ' },
+  { en: 'chair', ja: '椅子' },
+  { en: 'couch', ja: 'ソファ' },
+  { en: 'dining table', ja: '食卓・ダイニングテーブル' },
+  { en: 'potted plant', ja: '観葉植物（鉢植え）' },
+  { en: 'clock', ja: '時計' },
+  { en: 'vase', ja: '花瓶' },
+  { en: 'bowl', ja: '鉢・ボウル・お椀' },
+  { en: 'spoon', ja: 'スプーン' },
+  { en: 'fork', ja: 'フォーク' },
 ] as const;
-type TargetLabel = (typeof TARGET_LABELS)[number];
+type TargetLabel = (typeof TARGET_LABELS)[number]['en'];
 
 type DetectError = {
   code?: string;
@@ -39,7 +39,12 @@ type DetectError = {
 };
 
 const pickTargetLabel = (): TargetLabel => {
-  return TARGET_LABELS[Math.floor(Math.random() * TARGET_LABELS.length)];
+  return TARGET_LABELS[Math.floor(Math.random() * TARGET_LABELS.length)].en;
+};
+
+const getJapaneseLabel = (enLabel: TargetLabel): string => {
+  const item = TARGET_LABELS.find(t => t.en === enLabel);
+  return item?.ja || enLabel;
 };
 
 const describeDetectError = (error: unknown): DetectError => {
@@ -109,7 +114,7 @@ const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, onFallback }) => {
       }
       const nextAttempts = attempts + 1;
       setAttempts(nextAttempts);
-      setStatus(`一致しませんでした (対象: ${targetLabel})`);
+      setStatus(`一致しませんでした (対象: ${getJapaneseLabel(targetLabel)})`);
       if (nextAttempts >= MAX_ATTEMPTS) {
         triggerFallback('一致しないため別の解除へ切替');
       }
@@ -126,7 +131,7 @@ const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, onFallback }) => {
 
   const label = '写真で解除';
   const description = useMemo(() => {
-    return `対象: ${targetLabel} / 残り ${remainingAttempts} 回まで再撮影できます`;
+    return `対象: ${getJapaneseLabel(targetLabel)} / 残り ${remainingAttempts} 回まで再撮影できます`;
   }, [targetLabel, remainingAttempts]);
 
   const buttonText = useMemo(() => {
@@ -140,9 +145,9 @@ const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, onFallback }) => {
   }, [isCapturing, permission?.granted]);
 
   return (
-    <AlarmFireLayout time={time} label={label} onGiveUp={onGiveUp} backgroundColor="#FF70A6">
+    <AlarmFireLayout time={time} label={label} onGiveUp={onGiveUp} backgroundColor="#FF70A6" showGiveUpButton={false}>
       <Text style={styles.question}>撮影してください</Text>
-      <Text style={styles.targetLabel}>対象: {targetLabel}</Text>
+      <Text style={styles.targetLabel}>対象: {getJapaneseLabel(targetLabel)}</Text>
       <View style={styles.cameraBox}>
         {permission?.granted ? (
           <CameraView ref={cameraRef} style={styles.cameraPreview} facing="back" />
