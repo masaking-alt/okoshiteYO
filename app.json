@@ -3,6 +3,7 @@
     "name": "okoshiteYO",
     "slug": "okoshiteyo",
     "version": "1.0.0",
+    "icon": "./icon.png",
     "orientation": "portrait",
     "assetBundlePatterns": [
       "**/*"

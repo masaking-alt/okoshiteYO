@@ -1,5 +1,6 @@
 import React, { useMemo, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, StatusBar, NativeScrollEvent, NativeSyntheticEvent, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, NativeScrollEvent, NativeSyntheticEvent, TextInput } from 'react-native';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { AlarmAction, Alarm } from '../types';
 import { palette, theme } from '../theme/colors';
 
@@ -129,7 +130,13 @@ const EditorScreen: React.FC<Props> = ({
         <Text style={styles.toolbarTitle}>{alarm ? 'アラーム編集' : 'アラーム追加'}</Text>
         <View style={{ width: 24 }} />
       </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+      <KeyboardAwareScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 100 }}
+        enableOnAndroid={true}
+        keyboardShouldPersistTaps="handled"
+        extraScrollHeight={24}
+      >
         <Text style={styles.label}>時刻</Text>
           <View style={styles.timeInputRow}>
             <TimePicker value={hour} onValueChange={setHour} type="hour" />
@@ -220,7 +227,7 @@ const EditorScreen: React.FC<Props> = ({
             <Text style={styles.deleteButtonText}>削除</Text>
           </TouchableOpacity>
         )}
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </View>
   );
 };
