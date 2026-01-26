@@ -46,7 +46,7 @@ const subtitleFor = (alarm: Alarm) => {
 const labelForAction = (action: Alarm['action']) => {
   switch (action) {
     case 'math':
-      return '計算チャレンジ';
+      return '計算問題';
     case 'photo':
       return '証拠ショット';
     case 'shake':

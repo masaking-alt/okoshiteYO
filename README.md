@@ -5,7 +5,7 @@
 ## コンセプトと機能
 - 対象: 朝起きられない学生 / 遅刻できない社会人 (20〜50歳)
 - 解除手段: 計算チャレンジ / シェイク / 位置付き写真（拒否時は計算/シェイクに自動フォールバック）
-- スヌーズなし、曜日繰り返しあり、シンプル操作
+- スヌーズなし、曜日あり、シンプル操作
 - DND中でも鳴らす方針、バッテリー最適化は必要時のみ案内
 
 ## 画面構成
@@ -31,6 +31,18 @@
 - 画面向きを固定する場合は `android/app/src/main/AndroidManifest.xml` の `MainActivity` に `android:screenOrientation="portrait"` を設定。
 - `app.json` の `ios` ブロックは削除済み。
 
+<<<<<<< HEAD
+## Next implementation steps
+1. Bridge Android’s `AlarmManager` + `ForegroundService` to trigger the RN screens when alarms fire.
+2. Mirror the behavior on iOS with `UNUserNotificationCenter` (action UI opens after the notification is tapped).
+3. Replace the static editor state with a proper store (e.g., Zustand, Jotai, or Redux Toolkit) and persist to SQLite/WatermelonDB.
+
+
+## Run bev server 
+npm start -- --tunnel      
+## If you want to do cashe clear 
+npm start --clear --tunnel
+=======
 ## 開発手順
 1. 依存インストール（Node 18+）: `npm install`
 2. Expo CLI を用意する（未インストールならどちらかを選択）
@@ -59,3 +71,4 @@
 - AlarmManager + Foreground Service で発火→フルスクリーンActivityを起動（WAKE_LOCKは短時間）
 - 通知チャネル/フルスクリーンIntent設定、DND許可誘導、exact alarm 許可チェック
 - 写真モードはカメラ/位置権限が無い場合は保存時点で代替アクションに差し替える
+>>>>>>> layout

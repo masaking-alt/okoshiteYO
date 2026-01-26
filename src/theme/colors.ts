@@ -9,7 +9,8 @@ export const palette = {
   lavender: '#8F78FF',
   sky: '#F4F7FF',
   cream: '#FFF7EF',
-  border: '#E4E7EC'
+  border: '#E4E7EC',
+  black: '#000000'
 };
 
 export const theme = {

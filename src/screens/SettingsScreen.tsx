@@ -1,7 +1,14 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, ScrollView, Alert, NativeModules } from 'react-native';
 import { AlarmAction } from '../types';
 import { palette, theme } from '../theme/colors';
+
+const QUICK_ALARM_OFFSET_MS = 10_000;
+
+type AlarmModuleType = {
+  scheduleAlarm: (alarmId: string, timestamp: number, options?: { title?: string; mode?: string; time?: string }) => Promise<boolean>;
+  stopAlarm: () => Promise<boolean>;
+};
 
 interface Props {
   currentAction: AlarmAction;
@@ -36,6 +43,43 @@ const SettingsScreen: React.FC<Props> = ({
     }));
   };
 
+  const scheduleQuickAlarm = async () => {
+    const alarmModule = NativeModules.AlarmModule as AlarmModuleType | undefined;
+    if (!alarmModule?.scheduleAlarm) {
+      Alert.alert('AlarmModule not available');
+      return;
+    }
+    const fireAt = Date.now() + QUICK_ALARM_OFFSET_MS;
+    const alarmId = `quick_${fireAt}`;
+    const fireMode = actionMode === 'random' ? 'random' : currentAction;
+    try {
+      await alarmModule.scheduleAlarm(alarmId, fireAt, {
+        title: 'Test Alarm',
+        mode: fireMode,
+        time: new Date(fireAt).toTimeString().slice(0, 5)
+      });
+      Alert.alert('Alarm scheduled', 'Rings in ~10s');
+    } catch (error) {
+      console.warn('Failed to schedule alarm', error);
+      Alert.alert('Failed to schedule alarm');
+    }
+  };
+
+  const stopAlarm = async () => {
+    const alarmModule = NativeModules.AlarmModule as AlarmModuleType | undefined;
+    if (!alarmModule?.stopAlarm) {
+      Alert.alert('AlarmModule not available');
+      return;
+    }
+    try {
+      await alarmModule.stopAlarm();
+      Alert.alert('Alarm stopped');
+    } catch (error) {
+      console.warn('Failed to stop alarm', error);
+      Alert.alert('Failed to stop alarm');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.toolbar}>
@@ -47,29 +91,14 @@ const SettingsScreen: React.FC<Props> = ({
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-        <Text style={styles.sectionLabel}>アクションモード</Text>
-        <View style={styles.modeRow}>
-          <TouchableOpacity
-            style={[styles.modeChip, actionMode === 'fixed' && styles.modeChipActive]}
-            onPress={() => onChangeMode('fixed')}
-          >
-            <Text style={[styles.modeChipText, actionMode === 'fixed' && styles.modeChipTextActive]}>選択制</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.modeChip, actionMode === 'random' && styles.modeChipActive]}
-            onPress={() => onChangeMode('random')}
-          >
-            <Text style={[styles.modeChipText, actionMode === 'random' && styles.modeChipTextActive]}>ランダム</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.sectionLabel}>デフォルトの解除アクション</Text>
+       
+        <Text style={styles.sectionLabel}>解除アクション</Text>
         {(['math', 'shake', 'photo'] as AlarmAction[]).map((action) => {
           const active = action === currentAction;
           return (
             <TouchableOpacity
               key={action}
-              style={[styles.rowCard, active && styles.rowCardActive]}
+              style={[styles.rowCard]}
               onPress={() => onSelectAction(action)}
               onLongPress={() => onPreviewAction(action)}
             >
@@ -77,69 +106,14 @@ const SettingsScreen: React.FC<Props> = ({
                 <Text style={styles.rowTitle}>{titleFor(action)}</Text>
                 <Text style={styles.rowSubtitle}>{subtitleFor(action)}</Text>
               </View>
-              <Text style={[styles.rowStatus, active && styles.rowStatusActive]}>{active ? '使用中' : '長押しでプレビュー'}</Text>
+              <Text style={[styles.rowStatus]}>
+              長押しでプレビュー
+              </Text>
             </TouchableOpacity>
           );
         })}
 
-        <Text style={styles.sectionLabel}>権限とシステム設定</Text>
-        {permissionItems(permissionState).map((item) => (
-          <View key={item.key} style={styles.rowCard}>
-            <View style={{ flex: 1, paddingRight: 12 }}>
-              <Text style={styles.rowTitle}>{item.title}</Text>
-              <Text style={styles.rowSubtitle}>{item.description}</Text>
-              <Text style={styles.helperText}>※ ネイティブ実装と連携して実際の状態を反映</Text>
-            </View>
-            <View style={styles.statusColumn}>
-              <StatusPill state={item.state} />
-              <TouchableOpacity style={styles.secondaryButton} onPress={() => togglePermission(item.key)}>
-                <Text style={styles.secondaryButtonText}>{item.cta}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ))}
 
-        <Text style={styles.sectionLabel}>通知 & サウンド</Text>
-        <View style={styles.rowCard}>
-          <View>
-            <Text style={styles.rowTitle}>端末のデフォルトアラーム音</Text>
-            <Text style={styles.rowSubtitle}>RingtoneManager で取得。権限不要。</Text>
-          </View>
-          <StatusPill state="granted" label="利用中" />
-        </View>
-        <View style={styles.rowCard}>
-          <View>
-            <Text style={styles.rowTitle}>端末内の音源を選ぶ</Text>
-            <Text style={styles.rowSubtitle}>SAF (ACTION_OPEN_DOCUMENT) で音源を指定。外部ストレージ権限不要。</Text>
-          </View>
-          <TouchableOpacity style={styles.secondaryButton} onPress={() => onShowDemo('random')}>
-            <Text style={styles.secondaryButtonText}>選択UIを開く</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Text style={styles.sectionLabel}>その他</Text>
-        <View style={styles.rowCard}>
-          <View>
-            <Text style={styles.rowTitle}>絶対起動モード</Text>
-            <Text style={styles.rowSubtitle}>バイブ + 最大音量 + フルスクリーン。DND貫通を前提。</Text>
-          </View>
-          <View style={styles.fakeSwitch}>
-            <View style={styles.fakeSwitchDot} />
-          </View>
-        </View>
-        <View style={styles.rowCard}>
-          <View>
-            <Text style={styles.rowTitle}>統計を記録</Text>
-            <Text style={styles.rowSubtitle}>解除時間を記録して週次レポートを表示（将来対応）。</Text>
-          </View>
-          <View style={[styles.fakeSwitch, { backgroundColor: 'transparent', borderColor: theme.divider }]}>
-            <View style={[styles.fakeSwitchDot, { backgroundColor: theme.divider, marginLeft: 0 }]} />
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.demoButton} activeOpacity={0.9} onPress={() => onShowDemo('random')}>
-          <Text style={styles.demoText}>デモ画面を再生</Text>
-        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -161,11 +135,11 @@ const titleFor = (action: AlarmAction) => {
 const subtitleFor = (action: AlarmAction) => {
   switch (action) {
     case 'math':
-      return '寝ぼけ頭を一気に起こす問題';
+      return '計算を3問解いて解除';
     case 'shake':
-      return '体を動かして強制的に覚醒';
+      return 'スマホを50回振って解除';
     case 'photo':
-      return '登録スポットに移動しないと解除不可';
+      return '指定された物を撮影して解除';
     default:
       return '';
   }
@@ -345,6 +319,13 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: palette.sunrise,
     alignItems: 'center'
+  },
+  testButton: {
+    marginTop: 12
+  },
+  stopButton: {
+    marginTop: 8,
+    backgroundColor: palette.ink
   },
   demoText: {
     color: palette.white,

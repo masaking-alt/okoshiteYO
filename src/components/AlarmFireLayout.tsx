@@ -8,9 +8,10 @@ interface Props {
   onGiveUp: () => void;
   children: React.ReactNode;
   backgroundColor?: string;
+  showGiveUpButton?: boolean;
 }
 
-const AlarmFireLayout: React.FC<Props> = ({ time, label, onGiveUp, children, backgroundColor = palette.sunrise }) => {
+const AlarmFireLayout: React.FC<Props> = ({ time, label, onGiveUp, children, backgroundColor = palette.sunrise, showGiveUpButton = true }) => {
   return (
     <View style={[styles.container, { backgroundColor }]}>
       <Text style={styles.label}>ALARM</Text>
@@ -19,9 +20,11 @@ const AlarmFireLayout: React.FC<Props> = ({ time, label, onGiveUp, children, bac
 
       <View style={styles.panel}>{children}</View>
 
-      <TouchableOpacity style={styles.dismiss} onLongPress={onGiveUp} activeOpacity={0.8}>
-        <Text style={styles.dismissText}>長押しでギブアップ</Text>
-      </TouchableOpacity>
+      {showGiveUpButton && (
+        <TouchableOpacity style={styles.dismiss} onLongPress={onGiveUp} activeOpacity={0.8}>
+          <Text style={styles.dismissText}>長押しでギブアップ</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
