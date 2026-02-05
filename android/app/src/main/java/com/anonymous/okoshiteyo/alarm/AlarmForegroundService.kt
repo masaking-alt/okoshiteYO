@@ -74,9 +74,14 @@ class AlarmForegroundService : Service() {
 
         val fullScreenPending = createFullScreenPendingIntent(payload)
 
+        val notificationTitle = payload
+            ?.getString(AlarmConstants.EXTRA_TITLE)
+            ?.takeIf { it.isNotBlank() }
+            ?: "アラーム"
+
         val notification = NotificationCompat.Builder(this, AlarmConstants.CHANNEL_ID)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentTitle(payload?.getString(AlarmConstants.EXTRA_TITLE) ?: "Alarm")
+            .setContentTitle(notificationTitle)
             .setContentText("ここをタップ！！")
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)

@@ -59,7 +59,7 @@ const sanitizeAlarm = (value: unknown): Alarm | null => {
   if (!id || !time) {
     return null;
   }
-  const title = typeof record.title === 'string' ? record.title : 'アラーム';
+  const title = typeof record.title === 'string' ? record.title : '';
   const repeatDays = Array.isArray(record.repeatDays) ? record.repeatDays.filter((d) => typeof d === 'string') : [];
   const action = sanitizeAlarmAction(record.action);
   const mode = sanitizeMode(record.mode);

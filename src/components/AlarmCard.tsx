@@ -38,7 +38,7 @@ export const AlarmCard: React.FC<Props> = ({ alarm, onPress, onToggle, mode }) =
 
 const subtitleFor = (alarm: Alarm) => {
   if (!alarm.repeatDays.length) {
-    return alarm.title || 'アラーム';
+    return alarm.title;
   }
   return alarm.repeatDays.join(' / ');
 };

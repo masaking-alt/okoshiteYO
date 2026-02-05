@@ -118,7 +118,7 @@ export const buildScheduleInputFromPayload = (payload: AlarmFirePayload): AlarmS
   const repeatDays = payload.repeatDays ?? payload.repeat_days ?? [];
   return {
     id: payload.alarm_id,
-    title: payload.title ?? 'Alarm',
+    title: (payload.title ?? '').trim() || 'アラーム',
     time: payload.time,
     repeatDays,
     fireMode: coerceFireMode(payload.mode)
