@@ -15,6 +15,7 @@ type AlarmModuleType = {
   canScheduleExactAlarms?: () => Promise<boolean>;
   openExactAlarmSettings?: () => Promise<boolean>;
   openNotificationSettings?: () => Promise<boolean>;
+  openDndSettings?: () => Promise<boolean>;
 };
 
 const alarmModule = NativeModules.AlarmModule as AlarmModuleType | undefined;
@@ -104,7 +105,7 @@ export const coerceFireMode = (mode?: string): FireMode => {
 
 export const buildScheduleInput = (alarm: Alarm): AlarmScheduleInput => ({
   id: alarm.id,
-  title: alarm.title,
+  title: alarm.title.trim() || 'アラーム',
   time: alarm.time,
   repeatDays: alarm.repeatDays,
   fireMode: alarm.mode === 'random' ? 'random' : alarm.action
@@ -234,6 +235,13 @@ export const openNotificationSettings = async (): Promise<void> => {
     return;
   }
   await alarmModule.openNotificationSettings();
+};
+
+export const openDndSettings = async (): Promise<void> => {
+  if (!hasAlarmModule || !alarmModule?.openDndSettings) {
+    return;
+  }
+  await alarmModule.openDndSettings();
 };
 
 export const ensureNotificationPermission = async (): Promise<boolean> => {

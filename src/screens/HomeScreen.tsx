@@ -1,6 +1,7 @@
 import React from "react";
 import {
   View,
+  Image,
   Text,
   StyleSheet,
   FlatList,
@@ -37,7 +38,11 @@ const HomeScreen: React.FC<Props> = ({
           onPress={onOpenSettings}
           style={styles.settingsButton}
         >
-          <Text style={styles.settingsEmoji}>⚙️</Text>
+          <Image
+            style={styles.settingsEmoji}
+            source={require("../../assets/icons/setting.png")}
+            resizeMode="contain"
+          />
           <Text style={styles.settingsText}>設定</Text>
         </TouchableOpacity>
       </View>
@@ -78,6 +83,7 @@ const HomeScreen: React.FC<Props> = ({
 
 const statusBarPadding =
   Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
+const SETTINGS_ICON_SIZE = 28;
 
 const styles = StyleSheet.create({
   container: {
@@ -100,7 +106,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   settingsEmoji: {
-    fontSize: 28,
+    width: SETTINGS_ICON_SIZE,
+    height: SETTINGS_ICON_SIZE,
   },
   settingsText: {
     color: theme.textSecondary,

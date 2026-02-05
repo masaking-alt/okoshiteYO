@@ -12,6 +12,7 @@ import android.media.AudioFocusRequest
 import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
@@ -211,13 +212,19 @@ class AlarmForegroundService : Service() {
     }
 
     private fun createFullScreenPendingIntent(payload: Bundle?): PendingIntent {
+        val alarmId = payload?.getString(AlarmConstants.EXTRA_ALARM_ID)
+        val requestCode = alarmId?.hashCode() ?: 0
         val intent = Intent(this, AlarmRingingActivity::class.java).apply {
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            if (alarmId != null) {
+                action = "com.anonymous.okoshiteyo.action.ALARM_RING_$alarmId"
+                data = Uri.parse("okoshiteyo://alarm/$alarmId")
+            }
             if (payload != null) {
                 putExtras(payload)
             }
         }
-        return PendingIntent.getActivity(this, 0, intent, pendingFlags())
+        return PendingIntent.getActivity(this, requestCode, intent, pendingFlags())
     }
 
     private fun pendingIntentSendOptions(): Bundle? {

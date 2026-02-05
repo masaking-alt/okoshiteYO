@@ -6,8 +6,10 @@ import HomeScreen from './src/screens/HomeScreen';
 import EditorScreen from './src/screens/EditorScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import AlarmDemoScreen from './src/screens/AlarmDemoScreen';
+import PhotoTargetsScreen from './src/screens/PhotoTargetsScreen';
 import { alarmsMock } from './src/data/alarms';
 import { Alarm, AlarmAction } from './src/types';
+import { getAllPhotoTargetLabels, isPhotoTargetLabel, PhotoTargetLabel } from './src/data/photoTargets';
 import {
   AlarmFirePayload,
   buildScheduleInput,
@@ -26,12 +28,52 @@ import {
 } from './src/services/alarmScheduler';
 import { theme } from './src/theme/colors';
 
-type Screen = 'home' | 'editor' | 'settings' | 'demo' | 'alarm';
+type Screen = 'home' | 'editor' | 'settings' | 'photoTargets' | 'demo' | 'alarm';
 type DemoMode = AlarmAction | 'random';
 type EntryPoint = 'main' | 'alarm';
 type AppProps = { alarm?: AlarmFirePayload; entryPoint?: EntryPoint };
 const RANDOM_MODES: AlarmAction[] = ['math', 'shake', 'photo'];
 const ALARMS_STORAGE_KEY = 'alarms_storage_v1';
+type DemoReturnScreen = 'home' | 'editor' | 'settings';
+const PHOTO_TARGETS_STORAGE_KEY = 'photo_targets_enabled_v1';
+const MIN_ENABLED_PHOTO_TARGETS = 3;
+
+const sanitizeAlarmAction = (value: unknown): AlarmAction => {
+  if (value === 'math' || value === 'shake' || value === 'photo') {
+    return value;
+  }
+  return 'math';
+};
+
+const sanitizeMode = (value: unknown): 'fixed' | 'random' => {
+  return value === 'random' ? 'random' : 'fixed';
+};
+
+const sanitizeAlarm = (value: unknown): Alarm | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const id = typeof record.id === 'string' ? record.id : null;
+  const time = typeof record.time === 'string' ? record.time : null;
+  if (!id || !time) {
+    return null;
+  }
+  const title = typeof record.title === 'string' ? record.title : 'アラーム';
+  const repeatDays = Array.isArray(record.repeatDays) ? record.repeatDays.filter((d) => typeof d === 'string') : [];
+  const action = sanitizeAlarmAction(record.action);
+  const mode = sanitizeMode(record.mode);
+  const active = typeof record.active === 'boolean' ? record.active : true;
+  return { id, title, time, repeatDays, action, mode, active };
+};
+
+const sanitizeAlarmList = (value: unknown): Alarm[] | null => {
+  if (!Array.isArray(value)) {
+    return null;
+  }
+  const normalized = value.map(sanitizeAlarm).filter((item): item is Alarm => !!item);
+  return normalized;
+};
 
 const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
   const resolvedEntryPoint: EntryPoint = entryPoint ?? (alarm ? 'alarm' : 'main');
@@ -43,6 +85,9 @@ const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
   const [defaultAction, setDefaultAction] = useState<AlarmAction>('math');
   const [actionMode, setActionMode] = useState<'fixed' | 'random'>('random');
   const [demoMode, setDemoMode] = useState<DemoMode>('random');
+  const [demoReturnScreen, setDemoReturnScreen] = useState<DemoReturnScreen>('home');
+  const [enabledPhotoTargets, setEnabledPhotoTargets] = useState<PhotoTargetLabel[]>(() => getAllPhotoTargetLabels());
+  const [photoTargetsLoaded, setPhotoTargetsLoaded] = useState(false);
   const [alarmPayload, setAlarmPayload] = useState<AlarmFirePayload | null>(() => alarm ?? null);
   const [alarmResolvedMode, setAlarmResolvedMode] = useState<AlarmAction | null>(() => {
     if (!alarm) {
@@ -53,6 +98,7 @@ const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
   });
 
   const openPreview = (action: AlarmAction) => {
+    setDemoReturnScreen(screen === 'editor' || screen === 'settings' ? screen : 'home');
     setDemoMode(action);
     setScreen('demo');
   };
@@ -74,7 +120,7 @@ const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
       return payload;
     });
     setScreen('alarm');
-  }, []);
+  }, [shouldHandleAlarm]);
 
   useEffect(() => {
     let active = true;
@@ -86,11 +132,8 @@ const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
         }
         if (stored) {
           const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed)) {
-            setAlarms(parsed as Alarm[]);
-          } else {
-            setAlarms(alarmsMock);
-          }
+          const normalized = sanitizeAlarmList(parsed);
+          setAlarms(normalized ?? alarmsMock);
         } else {
           setAlarms(alarmsMock);
         }
@@ -110,6 +153,59 @@ const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
       active = false;
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadPhotoTargets = async () => {
+      try {
+        const stored = await AsyncStorage.getItem(PHOTO_TARGETS_STORAGE_KEY);
+        if (!active) {
+          return;
+        }
+        if (!stored) {
+          setEnabledPhotoTargets(getAllPhotoTargetLabels());
+          return;
+        }
+        const parsed = JSON.parse(stored);
+        if (!Array.isArray(parsed)) {
+          setEnabledPhotoTargets(getAllPhotoTargetLabels());
+          return;
+        }
+        const normalized = parsed.filter(isPhotoTargetLabel);
+        if (normalized.length < MIN_ENABLED_PHOTO_TARGETS) {
+          setEnabledPhotoTargets(getAllPhotoTargetLabels());
+          return;
+        }
+        setEnabledPhotoTargets(normalized);
+      } catch (error) {
+        console.warn('Failed to load photo targets', error);
+        if (active) {
+          setEnabledPhotoTargets(getAllPhotoTargetLabels());
+        }
+      } finally {
+        if (active) {
+          setPhotoTargetsLoaded(true);
+        }
+      }
+    };
+    loadPhotoTargets();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!photoTargetsLoaded) {
+      return;
+    }
+    if (enabledPhotoTargets.length < MIN_ENABLED_PHOTO_TARGETS) {
+      setEnabledPhotoTargets(getAllPhotoTargetLabels());
+      return;
+    }
+    AsyncStorage.setItem(PHOTO_TARGETS_STORAGE_KEY, JSON.stringify(enabledPhotoTargets)).catch((error) => {
+      console.warn('Failed to persist photo targets', error);
+    });
+  }, [enabledPhotoTargets, photoTargetsLoaded]);
 
   useEffect(() => {
     if (!alarmsLoaded) {
@@ -185,7 +281,8 @@ const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
 
   const saveAlarm = async (updated: Alarm) => {
     // 既存アラームの場合、キャンセルしてから再スケジュール
-    if (updated.id && updated.id !== Date.now().toString()) {
+    const exists = alarms.some((alarm) => alarm.id === updated.id);
+    if (exists) {
       try {
         await cancelAlarm(updated.id);
       } catch (error) {
@@ -234,6 +331,7 @@ const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
   };
 
   const openDemo = (mode: DemoMode) => {
+    setDemoReturnScreen(screen === 'editor' || screen === 'settings' ? screen : 'home');
     setDemoMode(mode);
     setScreen('demo');
   };
@@ -314,7 +412,15 @@ const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
       if (screen === 'home') {
         return false;
       }
-      if (screen === 'editor' || screen === 'settings' || screen === 'demo') {
+      if (screen === 'demo') {
+        setScreen(demoReturnScreen);
+        return true;
+      }
+      if (screen === 'photoTargets') {
+        setScreen('settings');
+        return true;
+      }
+      if (screen === 'editor' || screen === 'settings') {
         setScreen('home');
         return true;
       }
@@ -327,7 +433,7 @@ const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
     return () => {
       subscription.remove();
     };
-  }, [screen]);
+  }, [demoReturnScreen, screen]);
 
   const completeAlarm = async () => {
     await stopAlarm();
@@ -394,13 +500,30 @@ const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
           actionMode={actionMode}
           onChangeMode={setActionMode}
           onShowDemo={openDemo}
+          onOpenPhotoTargets={() => setScreen('photoTargets')}
         />
       )}
 
-      {screen === 'demo' && <AlarmDemoScreen mode={demoMode} onComplete={() => setScreen('home')} />}
+      {screen === 'photoTargets' && (
+        <PhotoTargetsScreen
+          enabledPhotoTargets={enabledPhotoTargets}
+          onChangeEnabledPhotoTargets={setEnabledPhotoTargets}
+          onBack={() => setScreen('settings')}
+        />
+      )}
+
+      {screen === 'demo' && (
+        <AlarmDemoScreen
+          mode={demoMode}
+          onComplete={() => setScreen(demoReturnScreen)}
+          onBack={() => setScreen(demoReturnScreen)}
+          showBackButton
+          enabledPhotoTargets={enabledPhotoTargets}
+        />
+      )}
 
       {screen === 'alarm' && alarmResolvedMode && (
-        <AlarmDemoScreen mode={alarmResolvedMode} time={fireTime} onComplete={completeAlarm} />
+        <AlarmDemoScreen mode={alarmResolvedMode} time={fireTime} onComplete={completeAlarm} enabledPhotoTargets={enabledPhotoTargets} />
       )}
 
       </SafeAreaView>

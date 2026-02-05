@@ -1,18 +1,18 @@
 # okoshiteYO
 
-絶対起こすマンなアラームアプリの React Native (Expo) プロトタイプ。UIが中心で、ネイティブアラーム連携はこれから実装する段階です。Androidのみ対象（iOSフォルダは削除済み）。
+絶対起こすマンなアラームアプリの React Native (Expo) プロジェクト。Androidのみ対象（iOSフォルダは削除済み）。
+`AlarmManager` + `ForegroundService` + フルスクリーン Activity で「発火→解除UI表示」まで実装済み（`android/app/src/main/java/.../alarm`）。
 
 ## コンセプトと機能
 - 対象: 朝起きられない学生 / 遅刻できない社会人 (20〜50歳)
-- 解除手段: 計算チャレンジ / シェイク / 位置付き写真（拒否時は計算/シェイクに自動フォールバック）
+- 解除手段: 計算チャレンジ / シェイク / 写真（拒否時は計算/シェイクに自動フォールバック）
 - スヌーズなし、曜日あり、シンプル操作
 - DND中でも鳴らす方針、バッテリー最適化は必要時のみ案内
 
 ## 画面構成
 - Home: アラーム一覧、設定ボタン、追加FAB (`HomeScreen.tsx`)
 - Editor: 時刻・曜日・アクション・モード設定 (`EditorScreen.tsx`)
-- Settings: デフォルトアクション、権限ステータス表示、音源選択など (`SettingsScreen.tsx`)
-- Action Preview: 各解除アクションのUIプレビュー (`ActionPreviewScreen.tsx`)
+- Settings: デフォルトアクションなど (`SettingsScreen.tsx`)
 - Alarm Fire (デモ/本番想定): Math/Shake/Photo で分割、共通レイアウトとRouterで切替
   - 共通レイアウト: `components/AlarmFireLayout.tsx`
   - ルーター: `screens/AlarmFireRouter.tsx`（`AlarmDemoScreen.tsx` から呼び出し）
@@ -22,7 +22,7 @@
 - 正確なアラーム: `SCHEDULE_EXACT_ALARM` / `USE_EXACT_ALARM`（作成時に確認、拒否なら保存ブロック）
 - 通知: `POST_NOTIFICATIONS`（作成時に確認、拒否なら保存ブロック）
 - DND貫通: `ACCESS_NOTIFICATION_POLICY`（作成時に案内、拒否なら「DND中は鳴らない」と表示）
-- 写真解除: `CAMERA` + `ACCESS_FINE_LOCATION`（写真モード選択時のみ、拒否なら計算/シェイクにフォールバック）
+- 写真解除: `CAMERA`（写真モード選択時のみ、拒否なら計算/シェイクにフォールバック）
 - 保存先: 写真はアプリ内キャッシュで解除後削除、音源は端末デフォルト or SAFで取得（追加ストレージ権限なし）
 - バッテリー最適化除外: 遅延が疑われるときだけ案内
 
@@ -31,18 +31,6 @@
 - 画面向きを固定する場合は `android/app/src/main/AndroidManifest.xml` の `MainActivity` に `android:screenOrientation="portrait"` を設定。
 - `app.json` の `ios` ブロックは削除済み。
 
-<<<<<<< HEAD
-## Next implementation steps
-1. Bridge Android’s `AlarmManager` + `ForegroundService` to trigger the RN screens when alarms fire.
-2. Mirror the behavior on iOS with `UNUserNotificationCenter` (action UI opens after the notification is tapped).
-3. Replace the static editor state with a proper store (e.g., Zustand, Jotai, or Redux Toolkit) and persist to SQLite/WatermelonDB.
-
-
-## Run bev server 
-npm start -- --tunnel      
-## If you want to do cashe clear 
-npm start --clear --tunnel
-=======
 ## 開発手順
 1. 依存インストール（Node 18+）: `npm install`
 2. Expo CLI を用意する（未インストールならどちらかを選択）
@@ -71,4 +59,8 @@ npm start --clear --tunnel
 - AlarmManager + Foreground Service で発火→フルスクリーンActivityを起動（WAKE_LOCKは短時間）
 - 通知チャネル/フルスクリーンIntent設定、DND許可誘導、exact alarm 許可チェック
 - 写真モードはカメラ/位置権限が無い場合は保存時点で代替アクションに差し替える
->>>>>>> layout
+
+## Next steps（リリース前に確認したい）
+- アラームの権限UX（Exact alarm / 通知 / DND）を Settings に反映し、説明と導線を揃える
+- 解除フローの失敗時挙動（写真判定失敗→フォールバック等）の文言と待ち時間を調整
+- ストア向けビルド（AAB、署名、versionCode運用、プライバシーポリシー）を整理

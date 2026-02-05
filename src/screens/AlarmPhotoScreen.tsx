@@ -1,50 +1,22 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { TouchableOpacity, View, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import AlarmFireLayout from '../components/AlarmFireLayout';
 import { FireMode, FireProps } from './fire/types';
+import { getJapanesePhotoTargetLabel, pickRandomPhotoTargetLabel, PhotoTargetLabel } from '../data/photoTargets';
 import { detectObject } from '../services/objectDetection';
 
 type Props = FireProps & {
   onFallback?: (mode: FireMode) => void;
+  enabledTargets: PhotoTargetLabel[];
 };
 
 const MAX_ATTEMPTS = 3;
 const FALLBACK_MODES: FireMode[] = ['math', 'shake'];
-const TARGET_LABELS = [
-  { en: 'scissors', ja: 'はさみ' },
-  { en: 'keyboard', ja: 'キーボード' },
-  { en: 'mouse', ja: 'マウス' },
-  { en: 'bottle', ja: '瓶・ボトル' },
-  { en: 'remote', ja: 'リモコン' },
-  { en: 'book', ja: '本' },
-  { en: 'cup', ja: 'カップ・コップ' },
-  { en: 'laptop', ja: 'ノートパソコン' },
-  { en: 'tv', ja: 'テレビ' },
-  { en: 'chair', ja: '椅子' },
-  { en: 'couch', ja: 'ソファ' },
-  { en: 'dining table', ja: '食卓・ダイニングテーブル' },
-  { en: 'potted plant', ja: '観葉植物（鉢植え）' },
-  { en: 'clock', ja: '時計' },
-  { en: 'vase', ja: '花瓶' },
-  { en: 'bowl', ja: '鉢・ボウル・お椀' },
-  { en: 'spoon', ja: 'スプーン' },
-  { en: 'fork', ja: 'フォーク' },
-] as const;
-type TargetLabel = (typeof TARGET_LABELS)[number]['en'];
 
 type DetectError = {
   code?: string;
   message?: string;
-};
-
-const pickTargetLabel = (): TargetLabel => {
-  return TARGET_LABELS[Math.floor(Math.random() * TARGET_LABELS.length)].en;
-};
-
-const getJapaneseLabel = (enLabel: TargetLabel): string => {
-  const item = TARGET_LABELS.find(t => t.en === enLabel);
-  return item?.ja || enLabel;
 };
 
 const describeDetectError = (error: unknown): DetectError => {
@@ -69,11 +41,19 @@ const hintForErrorCode = (code?: string) => {
   }
 };
 
-const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, onFallback }) => {
+const AlarmPhotoScreen: React.FC<Props> = ({
+  time,
+  onGiveUp,
+  onFallback,
+  onBack,
+  showBackButton,
+  enabledTargets
+}) => {
+  const { height: windowHeight } = useWindowDimensions();
   const cameraRef = useRef<CameraView | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [isCapturing, setIsCapturing] = useState(false);
-  const [targetLabel, setTargetLabel] = useState<TargetLabel>(() => pickTargetLabel());
+  const [targetLabel, setTargetLabel] = useState<PhotoTargetLabel>(() => pickRandomPhotoTargetLabel(enabledTargets));
   const [attempts, setAttempts] = useState(0);
   const [status, setStatus] = useState<string>('');
   const fallbackTriggered = useRef(false);
@@ -93,11 +73,11 @@ const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, onFallback }) => {
   };
 
   useEffect(() => {
-    setTargetLabel(pickTargetLabel());
+    setTargetLabel(pickRandomPhotoTargetLabel(enabledTargets));
     setAttempts(0);
     setStatus('');
     fallbackTriggered.current = false;
-  }, [time]);
+  }, [enabledTargets, time]);
 
   const handleCapture = async () => {
     if (!cameraRef.current || isCapturing) {
@@ -114,7 +94,7 @@ const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, onFallback }) => {
       }
       const nextAttempts = attempts + 1;
       setAttempts(nextAttempts);
-      setStatus(`一致しませんでした (対象: ${getJapaneseLabel(targetLabel)})`);
+      setStatus(`一致しませんでした (対象: ${getJapanesePhotoTargetLabel(targetLabel)})`);
       if (nextAttempts >= MAX_ATTEMPTS) {
         triggerFallback('一致しないため別の解除へ切替');
       }
@@ -131,7 +111,7 @@ const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, onFallback }) => {
 
   const label = '写真で解除';
   const description = useMemo(() => {
-    return `対象: ${getJapaneseLabel(targetLabel)} / 残り ${remainingAttempts} 回まで再撮影できます`;
+    return `対象: ${getJapanesePhotoTargetLabel(targetLabel)} / 残り ${remainingAttempts} 回まで再撮影できます`;
   }, [targetLabel, remainingAttempts]);
 
   const buttonText = useMemo(() => {
@@ -144,11 +124,22 @@ const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, onFallback }) => {
     return '撮影して解除';
   }, [isCapturing, permission?.granted]);
 
+  const shutterDisabled = isCapturing;
+  const cameraMaxHeight = Math.min(windowHeight * 0.56, 620);
+
   return (
-    <AlarmFireLayout time={time} label={label} onGiveUp={onGiveUp} backgroundColor="#FF70A6" showGiveUpButton={false}>
+    <AlarmFireLayout
+      time={time}
+      label={label}
+      onGiveUp={onGiveUp}
+      onBack={onBack}
+      showBackButton={showBackButton}
+      backgroundColor="#FF70A6"
+      showGiveUpButton={false}
+    >
       <Text style={styles.question}>撮影してください</Text>
-      <Text style={styles.targetLabel}>対象: {getJapaneseLabel(targetLabel)}</Text>
-      <View style={styles.cameraBox}>
+      <Text style={styles.targetLabel}>対象: {getJapanesePhotoTargetLabel(targetLabel)}</Text>
+      <View style={[styles.cameraBox, { maxHeight: cameraMaxHeight }]}>
         {permission?.granted ? (
           <CameraView ref={cameraRef} style={styles.cameraPreview} facing="back" />
         ) : (
@@ -158,17 +149,27 @@ const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, onFallback }) => {
         )}
       </View>
       <TouchableOpacity
-        style={styles.captureButton}
+        style={[styles.shutterButton, shutterDisabled && styles.shutterButtonDisabled]}
         onPress={permission?.granted ? handleCapture : () => requestPermission()}
         activeOpacity={0.9}
+        disabled={shutterDisabled}
+        hitSlop={12}
+        accessibilityRole="button"
+        accessibilityLabel={buttonText}
       >
-        <Text style={styles.captureText}>{buttonText}</Text>
+        <View style={[styles.shutterOuter, !permission?.granted && styles.shutterOuterPending]}>
+          <View style={[styles.shutterInner, !permission?.granted && styles.shutterInnerPending]} />
+        </View>
       </TouchableOpacity>
+      <Text style={styles.captureLabel}>{buttonText}</Text>
       <Text style={styles.hint}>{description}</Text>
       {!!status && <Text style={styles.status}>{status}</Text>}
     </AlarmFireLayout>
   );
 };
+
+const SHUTTER_OUTER_SIZE = 78;
+const SHUTTER_INNER_SIZE = 62;
 
 const styles = StyleSheet.create({
   question: {
@@ -178,8 +179,9 @@ const styles = StyleSheet.create({
     textAlign: 'center'
   },
   cameraBox: {
-    marginTop: 24,
-    height: 500,
+    marginTop: 14,
+    width: '100%',
+    aspectRatio: 3 / 4,
     borderRadius: 24,
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.7)',
@@ -200,16 +202,48 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18
   },
-  captureButton: {
+  shutterButton: {
     marginTop: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.9)'
+    width: SHUTTER_OUTER_SIZE,
+    height: SHUTTER_OUTER_SIZE,
+    borderRadius: SHUTTER_OUTER_SIZE / 2,
+    alignSelf: 'center',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
-  captureText: {
-    color: '#FF70A6',
-    fontWeight: '700'
+  shutterButtonDisabled: {
+    opacity: 0.6
+  },
+  shutterOuter: {
+    width: SHUTTER_OUTER_SIZE,
+    height: SHUTTER_OUTER_SIZE,
+    borderRadius: SHUTTER_OUTER_SIZE / 2,
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)'
+  },
+  shutterOuterPending: {
+    borderColor: 'rgba(255,255,255,0.7)',
+    backgroundColor: 'rgba(255,255,255,0.06)'
+  },
+  shutterInner: {
+    width: SHUTTER_INNER_SIZE,
+    height: SHUTTER_INNER_SIZE,
+    borderRadius: SHUTTER_INNER_SIZE / 2,
+    backgroundColor: 'rgba(255,255,255,0.95)'
+  },
+  shutterInnerPending: {
+    backgroundColor: 'rgba(255,255,255,0.5)'
+  },
+  captureLabel: {
+    color: '#fff',
+    fontWeight: '700',
+    marginTop: 10
+    ,
+    alignSelf: 'center',
+    textAlign: 'center'
   },
   targetLabel: {
     color: '#fff',

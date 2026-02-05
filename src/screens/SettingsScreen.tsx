@@ -1,14 +1,8 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, ScrollView, Alert, NativeModules } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, ScrollView, Alert, Linking } from 'react-native';
 import { AlarmAction } from '../types';
 import { palette, theme } from '../theme/colors';
-
-const QUICK_ALARM_OFFSET_MS = 10_000;
-
-type AlarmModuleType = {
-  scheduleAlarm: (alarmId: string, timestamp: number, options?: { title?: string; mode?: string; time?: string }) => Promise<boolean>;
-  stopAlarm: () => Promise<boolean>;
-};
+import { ensureNotificationPermission, openDndSettings, openExactAlarmSettings, openNotificationSettings } from '../services/alarmScheduler';
 
 interface Props {
   currentAction: AlarmAction;
@@ -18,6 +12,7 @@ interface Props {
   actionMode: 'fixed' | 'random';
   onChangeMode: (mode: 'fixed' | 'random') => void;
   onShowDemo: (mode: 'random' | AlarmAction) => void;
+  onOpenPhotoTargets: () => void;
 }
 
 const SettingsScreen: React.FC<Props> = ({
@@ -27,56 +22,32 @@ const SettingsScreen: React.FC<Props> = ({
   onPreviewAction,
   actionMode,
   onChangeMode,
-  onShowDemo
+  onShowDemo,
+  onOpenPhotoTargets
 }) => {
-  const [permissionState, setPermissionState] = useState<PermissionStateMap>({
-    exact: 'needs',
-    notification: 'needs',
-    dnd: 'needs',
-    battery: 'info'
-  });
-
-  const togglePermission = (key: PermissionKey) => {
-    setPermissionState((prev) => ({
-      ...prev,
-      [key]: prev[key] === 'granted' ? 'needs' : 'granted'
-    }));
-  };
-
-  const scheduleQuickAlarm = async () => {
-    const alarmModule = NativeModules.AlarmModule as AlarmModuleType | undefined;
-    if (!alarmModule?.scheduleAlarm) {
-      Alert.alert('AlarmModule not available');
-      return;
-    }
-    const fireAt = Date.now() + QUICK_ALARM_OFFSET_MS;
-    const alarmId = `quick_${fireAt}`;
-    const fireMode = actionMode === 'random' ? 'random' : currentAction;
+  const requestNotifications = async () => {
     try {
-      await alarmModule.scheduleAlarm(alarmId, fireAt, {
-        title: 'Test Alarm',
-        mode: fireMode,
-        time: new Date(fireAt).toTimeString().slice(0, 5)
-      });
-      Alert.alert('Alarm scheduled', 'Rings in ~10s');
+      const granted = await ensureNotificationPermission();
+      if (granted) {
+        Alert.alert('通知を許可しました');
+        return;
+      }
+      Alert.alert('通知が未許可です', '設定画面から通知を許可してください。', [
+        { text: '設定を開く', onPress: () => openNotificationSettings() },
+        { text: '閉じる', style: 'cancel' }
+      ]);
     } catch (error) {
-      console.warn('Failed to schedule alarm', error);
-      Alert.alert('Failed to schedule alarm');
+      console.warn('Failed to request notifications permission', error);
+      Alert.alert('通知の許可に失敗しました');
     }
   };
 
-  const stopAlarm = async () => {
-    const alarmModule = NativeModules.AlarmModule as AlarmModuleType | undefined;
-    if (!alarmModule?.stopAlarm) {
-      Alert.alert('AlarmModule not available');
-      return;
-    }
+  const openAppSettings = async () => {
     try {
-      await alarmModule.stopAlarm();
-      Alert.alert('Alarm stopped');
+      await Linking.openSettings();
     } catch (error) {
-      console.warn('Failed to stop alarm', error);
-      Alert.alert('Failed to stop alarm');
+      console.warn('Failed to open app settings', error);
+      Alert.alert('設定を開けませんでした');
     }
   };
 
@@ -113,6 +84,24 @@ const SettingsScreen: React.FC<Props> = ({
           );
         })}
 
+        <Text style={styles.sectionLabel}>証拠ショット</Text>
+        <TouchableOpacity style={styles.rowCard} onPress={onOpenPhotoTargets} activeOpacity={0.85}>
+          <View>
+            <Text style={styles.rowTitle}>証拠ショットの対象物</Text>
+            <Text style={styles.rowSubtitle}>指定される物をON/OFFできます（最低3つはON）</Text>
+          </View>
+          <Text style={styles.rowStatus}>開く</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.sectionLabel}>権限と設定</Text>
+
+        <TouchableOpacity style={styles.rowCard} onPress={openAppSettings}>
+          <View>
+            <Text style={styles.rowTitle}>アプリ設定</Text>
+            <Text style={styles.rowSubtitle}>カメラなど個別の権限はここから変更できます</Text>
+          </View>
+          <Text style={styles.rowStatus}>開く</Text>
+        </TouchableOpacity>
 
       </ScrollView>
     </View>
@@ -146,73 +135,6 @@ const subtitleFor = (action: AlarmAction) => {
 };
 
 const statusBarPadding = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
-
-type PermissionState = 'needs' | 'granted' | 'warn';
-type PermissionKey = 'exact' | 'notification' | 'dnd' | 'battery';
-type PermissionStateMap = Record<PermissionKey, PermissionState | 'info'>;
-
-const permissionItems = (state: PermissionStateMap) =>
-  [
-    {
-      key: 'exact' as PermissionKey,
-      title: '正確なアラーム',
-      description: 'SCHEDULE_EXACT_ALARM / USE_EXACT_ALARM を許可。許可なしは保存をブロック。',
-      cta: '状態確認',
-      state: state.exact
-    },
-    {
-      key: 'notification' as PermissionKey,
-      title: '通知 (POST_NOTIFICATIONS)',
-      description: 'API33+ で runtime 権限。拒否時はアラーム作成をブロック。',
-      cta: '確認',
-      state: state.notification
-    },
-    {
-      key: 'dnd' as PermissionKey,
-      title: 'おやすみモードを貫通',
-      description: 'ACCESS_NOTIFICATION_POLICY を設定アプリで許可。拒否時は DND 中に鳴らないことを明示。',
-      cta: '設定を開く',
-      state: state.dnd
-    },
-    {
-      key: 'battery' as PermissionKey,
-      title: 'バッテリー最適化の除外',
-      description: '遅延が疑われるときだけ ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS へ誘導。',
-      cta: '案内する',
-      state: state.battery
-    }
-  ] as const;
-
-const StatusPill = ({ state, label }: { state: PermissionState | 'info'; label?: string }) => {
-  const text = label ?? statusLabel(state);
-  return <Text style={[styles.statusPill, statusStyle(state)]}>{text}</Text>;
-};
-
-const statusLabel = (state: PermissionState | 'info') => {
-  switch (state) {
-    case 'granted':
-      return '許可済み';
-    case 'warn':
-      return '要確認';
-    case 'needs':
-      return '未許可';
-    default:
-      return '案内のみ';
-  }
-};
-
-const statusStyle = (state: PermissionState | 'info') => {
-  switch (state) {
-    case 'granted':
-      return { backgroundColor: palette.mint, color: palette.white };
-    case 'warn':
-      return { backgroundColor: palette.lavender, color: palette.white };
-    case 'needs':
-      return { backgroundColor: palette.sunrise, color: palette.white };
-    default:
-      return { backgroundColor: theme.cardMuted, color: theme.textPrimary };
-  }
-};
 
 const styles = StyleSheet.create({
   container: {
@@ -268,10 +190,6 @@ const styles = StyleSheet.create({
   rowStatus: {
     color: theme.textSecondary,
     fontSize: 12
-  },
-  rowStatusActive: {
-    color: palette.sunrise,
-    fontWeight: '700'
   },
   modeRow: {
     flexDirection: 'row',
@@ -337,19 +255,6 @@ const styles = StyleSheet.create({
   },
   statusColumn: {
     alignItems: 'flex-end'
-  },
-  secondaryButton: {
-    marginTop: 10,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderColor: palette.sunrise,
-    borderWidth: 1
-  },
-  secondaryButtonText: {
-    color: palette.sunrise,
-    fontWeight: '700',
-    fontSize: 12
   },
   statusPill: {
     paddingHorizontal: 10,

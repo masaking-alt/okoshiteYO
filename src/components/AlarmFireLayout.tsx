@@ -1,26 +1,41 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { Platform, StatusBar, View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { palette } from "../theme/colors";
 
 interface Props {
   time: string;
   label: string;
   onGiveUp: () => void;
+  onBack?: () => void;
   children: React.ReactNode;
   backgroundColor?: string;
   showGiveUpButton?: boolean;
+  showBackButton?: boolean;
 }
 
 const AlarmFireLayout: React.FC<Props> = ({
   time,
   label,
   onGiveUp,
+  onBack,
   children,
   backgroundColor = palette.sunrise,
   showGiveUpButton = false,
+  showBackButton = false,
 }) => {
+  const statusBarPadding =
+    Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
   return (
     <View style={[styles.container, { backgroundColor }]}>
+      {showBackButton && onBack && (
+        <TouchableOpacity
+          style={[styles.backButton, { top: 16 + statusBarPadding }]}
+          onPress={onBack}
+          activeOpacity={0.85}
+        >
+          <Text style={styles.backText}>← 戻る</Text>
+        </TouchableOpacity>
+      )}
       <Text style={styles.label}>ALARM</Text>
       <Text style={styles.time}>{time}</Text>
       <Text style={styles.subLabel}>{label}</Text>
@@ -82,6 +97,19 @@ const styles = StyleSheet.create({
     color: "#fff",
     fontSize: 12,
     letterSpacing: 1,
+  },
+  backButton: {
+    position: "absolute",
+    left: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.22)",
+  },
+  backText: {
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: "700",
   },
 });
 

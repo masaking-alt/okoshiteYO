@@ -31,7 +31,12 @@ const createQuestion = (): Question => {
   return { left, right, answer, options: shuffled };
 };
 
-const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
+const AlarmMathScreen: React.FC<FireProps> = ({
+  time,
+  onGiveUp,
+  onBack,
+  showBackButton,
+}) => {
   const [questions] = useState<Question[]>(() => [
     createQuestion(),
     createQuestion(),
@@ -118,6 +123,8 @@ const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
       time={time}
       label="計算を解かないと止まらない"
       onGiveUp={onGiveUp}
+      onBack={onBack}
+      showBackButton={showBackButton}
     >
       <Text style={styles.progress}>
         問題 {index + 1} / {questions.length}

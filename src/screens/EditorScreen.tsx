@@ -67,6 +67,9 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onValueChange, type }) =
         maxLength={2}
         editable={true}
         selectTextOnFocus={true}
+        allowFontScaling={false}
+        multiline={false}
+        scrollEnabled={false}
       />
     </View>
   );
@@ -102,9 +105,11 @@ const EditorScreen: React.FC<Props> = ({
     // 空白または未入力の場合は「00」にする
     const finalHour = hour && hour !== '' ? twoDigit(parseInt(hour, 10)) : '00';
     const finalMinutes = minutes && minutes !== '' ? twoDigit(parseInt(minutes, 10)) : '00';
+    const title = memo.trim();
     
     const payload: Alarm = {
       id: alarm?.id ?? Date.now().toString(),
+      title,
       time: `${finalHour}:${finalMinutes}`,
       repeatDays,
       action: selectedAction,
@@ -130,19 +135,21 @@ const EditorScreen: React.FC<Props> = ({
         <Text style={styles.toolbarTitle}>{alarm ? 'アラーム編集' : 'アラーム追加'}</Text>
         <View style={{ width: 24 }} />
       </View>
+
+      <Text style={styles.label}>時刻</Text>
+      <View style={styles.timeInputRow}>
+        <TimePicker value={hour} onValueChange={setHour} type="hour" />
+        <Text style={styles.timeColon}>:</Text>
+        <TimePicker value={minutes} onValueChange={setMinutes} type="minute" />
+      </View>
+
       <KeyboardAwareScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 48 }}
         enableOnAndroid={true}
         keyboardShouldPersistTaps="handled"
         extraScrollHeight={24}
       >
-        <Text style={styles.label}>時刻</Text>
-          <View style={styles.timeInputRow}>
-            <TimePicker value={hour} onValueChange={setHour} type="hour" />
-            <Text style={styles.timeColon}>:</Text>
-            <TimePicker value={minutes} onValueChange={setMinutes} type="minute" />
-          </View>
         <View style={styles.dayRow}>
           {days.map((day) => {
             const active = repeatDays.includes(day);
@@ -282,6 +289,8 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: palette.black,
     textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
     width: 150
   },
   timeValueDisplay: {

@@ -9,7 +9,12 @@ const SHAKE_THRESHOLD = 0.8;
 const SHAKE_COOLDOWN_MS = 350;
 const UPDATE_INTERVAL_MS = 100;
 
-const AlarmShakeScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
+const AlarmShakeScreen: React.FC<FireProps> = ({
+  time,
+  onGiveUp,
+  onBack,
+  showBackButton,
+}) => {
   const [shakeCount, setShakeCount] = useState(0);
   const [sensorAvailable, setSensorAvailable] = useState(true);
   const lastShakeAt = useRef(0);
@@ -56,10 +61,18 @@ const AlarmShakeScreen: React.FC<FireProps> = ({ time, onGiveUp }) => {
   }, [onGiveUp, shakeCount]);
 
   const remaining = Math.max(0, TARGET_SHAKES - shakeCount);
-  const progressWidth = `${Math.min(100, (shakeCount / TARGET_SHAKES) * 100)}%`;
+  const progressWidth = `${Math.min(100, (shakeCount / TARGET_SHAKES) * 100)}%` as `${number}%`;
 
   return (
-    <AlarmFireLayout time={time} label="端末を振って解除" onGiveUp={onGiveUp} backgroundColor="#FFD166" showGiveUpButton={false}>
+    <AlarmFireLayout
+      time={time}
+      label="端末を振って解除"
+      onGiveUp={onGiveUp}
+      onBack={onBack}
+      showBackButton={showBackButton}
+      backgroundColor="#FFD166"
+      showGiveUpButton={false}
+    >
       <Text style={styles.question}>残り {remaining} シェイク！</Text>
       {!sensorAvailable && <Text style={styles.hint}>この端末では加速度センサーが使えません。</Text>}
       <View style={styles.progressOuter}>
