@@ -102,9 +102,11 @@ const EditorScreen: React.FC<Props> = ({
     // 空白または未入力の場合は「00」にする
     const finalHour = hour && hour !== '' ? twoDigit(parseInt(hour, 10)) : '00';
     const finalMinutes = minutes && minutes !== '' ? twoDigit(parseInt(minutes, 10)) : '00';
+    const title = memo.trim();
 
     const payload: Alarm = {
       id: alarm?.id ?? Date.now().toString(),
+      title,
       time: `${finalHour}:${finalMinutes}`,
       repeatDays,
       action: selectedAction,
