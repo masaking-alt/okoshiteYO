@@ -67,6 +67,9 @@ const TimePicker: React.FC<TimePickerProps> = ({ value, onValueChange, type }) =
         maxLength={2}
         editable={true}
         selectTextOnFocus={true}
+        multiline={false}
+        scrollEnabled={false}
+        allowFontScaling={false}
       />
     </View>
   );
@@ -281,9 +284,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 12,
     fontSize: 72,
+    lineHeight: 90,
     fontWeight: '700',
     color: palette.black,
     textAlign: 'center',
+    textAlignVertical: 'center',
+    includeFontPadding: false,
     width: 150
   },
   timeValueDisplay: {
