@@ -39,6 +39,17 @@
 3. 開発サーバー起動: `npm start`（内部で `npx expo start` を呼ぶ。トンネルは `npm start -- --tunnel`）
 4. Androidで動作確認（iOSは対象外）
 
+## ローカルでAAB生成（Play Store用）
+1. 依存インストール: `npm install`
+2. （初回のみ）Androidの依存取得のために一度ビルドを通す
+3. 署名用 keystore を用意し、以下を環境変数で渡して実行:
+   - `OKOSHITEYO_UPLOAD_STORE_FILE`（keystore の絶対パス）
+   - `OKOSHITEYO_UPLOAD_STORE_PASSWORD`
+   - `OKOSHITEYO_UPLOAD_KEY_ALIAS`
+   - `OKOSHITEYO_UPLOAD_KEY_PASSWORD`
+4. 実行: `npm run android:aab`
+5. 生成物: `android/app/build/outputs/bundle/release/app-release.aab`
+
 ## Expo起動手順（先生向け）
 1. 依存インストール: `npm install`
 2. Expo起動: `npm start`（または `npx expo start`）

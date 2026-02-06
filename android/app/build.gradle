@@ -3,21 +3,26 @@ apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
+def nodeBinary = System.getenv("NODE_BINARY")?.trim()
+if (!nodeBinary) {
+    def candidates = ["/opt/homebrew/bin/node", "/usr/local/bin/node"]
+    nodeBinary = candidates.find { path -> new File(path).canExecute() } ?: "node"
+}
 
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
 react {
-    entryFile = file(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
-    reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
-    hermesCommand = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
-    codegenDir = new File(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+    entryFile = file([nodeBinary, "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
+    reactNativeDir = new File([nodeBinary, "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+    hermesCommand = new File([nodeBinary, "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
+    codegenDir = new File([nodeBinary, "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
 
     enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()
     // Use Expo CLI to bundle the app, this ensures the Metro config
     // works correctly with Expo projects.
-    cliFile = new File(["node", "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
+    cliFile = new File([nodeBinary, "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
     bundleCommand = "export:embed"
 
     /* Folders */
@@ -71,6 +76,7 @@ def enableMinifyInReleaseBuilds = (findProperty('android.enableMinifyInReleaseBu
 def hasInjectedSigning = project.hasProperty("android.injected.signing.store.file")
 def hasUploadSigning = findProperty("OKOSHITEYO_UPLOAD_STORE_FILE") != null
 def hasReleaseSigning = hasInjectedSigning || hasUploadSigning
+def allowDebugSignedRelease = (findProperty("OKOSHITEYO_ALLOW_DEBUG_SIGNED_RELEASE") ?: "false").toBoolean()
 
 /**
  * The preferred build flavor of JavaScriptCore (JSC)
@@ -86,12 +92,12 @@ def hasReleaseSigning = hasInjectedSigning || hasUploadSigning
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
 android {
-    ndkVersion rootProject.ext.ndkVersion
+    ndkVersion = rootProject.ext.ndkVersion
 
     buildToolsVersion rootProject.ext.buildToolsVersion
-    compileSdk rootProject.ext.compileSdkVersion
+    compileSdk = rootProject.ext.compileSdkVersion
 
-    namespace 'com.anonymous.okoshiteyo'
+    namespace = 'com.anonymous.okoshiteyo'
     defaultConfig {
         applicationId 'com.anonymous.okoshiteyo'
         minSdkVersion rootProject.ext.minSdkVersion
@@ -115,7 +121,9 @@ android {
                 keyAlias project.property("android.injected.signing.key.alias")
                 keyPassword project.property("android.injected.signing.key.password")
             } else if (hasUploadSigning) {
-                storeFile file(findProperty("OKOSHITEYO_UPLOAD_STORE_FILE"))
+                def storeFilePath = findProperty("OKOSHITEYO_UPLOAD_STORE_FILE").toString()
+                def resolvedStoreFile = storeFilePath.startsWith(File.separator) ? file(storeFilePath) : rootProject.file(storeFilePath)
+                storeFile resolvedStoreFile
                 storePassword findProperty("OKOSHITEYO_UPLOAD_STORE_PASSWORD")
                 keyAlias findProperty("OKOSHITEYO_UPLOAD_KEY_ALIAS")
                 keyPassword findProperty("OKOSHITEYO_UPLOAD_KEY_PASSWORD")
@@ -124,32 +132,52 @@ android {
     }
     buildTypes {
         debug {
-            signingConfig signingConfigs.debug
+            signingConfig = signingConfigs.debug
         }
         release {
             if (hasReleaseSigning) {
-                signingConfig signingConfigs.release
+                signingConfig = signingConfigs.release
             } else {
-                // Local fallback only. Do not upload builds signed with debug.keystore to a store.
-                println("WARNING: Release build is using debug.keystore (no release signing config provided).")
-                signingConfig signingConfigs.debug
+                // Still configure the build type, but enforce proper signing later when a release task is requested.
+                signingConfig = signingConfigs.debug
             }
             def enableShrinkResources = findProperty('android.enableShrinkResourcesInReleaseBuilds') ?: 'false'
-            shrinkResources enableShrinkResources.toBoolean()
+            shrinkResources = enableShrinkResources.toBoolean()
             minifyEnabled enableMinifyInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
             def enablePngCrunchInRelease = findProperty('android.enablePngCrunchInReleaseBuilds') ?: 'true'
-            crunchPngs enablePngCrunchInRelease.toBoolean()
+            crunchPngs = enablePngCrunchInRelease.toBoolean()
         }
     }
     packagingOptions {
         jniLibs {
             def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'
-            useLegacyPackaging enableLegacyPackaging.toBoolean()
+            useLegacyPackaging = enableLegacyPackaging.toBoolean()
         }
     }
     androidResources {
-        ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+        ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
+    }
+}
+
+gradle.taskGraph.whenReady { graph ->
+    def releaseTasks = graph.allTasks.findAll { task ->
+        def path = task.path?.toString() ?: ""
+        // Only gate tasks for the app module release variant.
+        path.startsWith(":app:") && path.toLowerCase().contains("release") &&
+                (path.toLowerCase().contains("bundle") || path.toLowerCase().contains("assemble") || path.toLowerCase().contains("package"))
+    }
+
+    if (releaseTasks.size() > 0 && !hasReleaseSigning && !allowDebugSignedRelease) {
+        throw new GradleException(
+                "Release signing is not configured. Refusing to run release tasks with debug.keystore.\n" +
+                "Provide one of:\n" +
+                "  - Android Studio 'Generate Signed Bundle / APK' (injected signing), or\n" +
+                "  - Gradle properties OKOSHITEYO_UPLOAD_STORE_FILE / OKOSHITEYO_UPLOAD_STORE_PASSWORD / OKOSHITEYO_UPLOAD_KEY_ALIAS / OKOSHITEYO_UPLOAD_KEY_PASSWORD.\n" +
+                "If you really want a debug-signed release build for local testing, set -POKOSHITEYO_ALLOW_DEBUG_SIGNED_RELEASE=true.\n" +
+                "Requested release tasks:\n" +
+                releaseTasks.collect { "  - ${it.path}" }.join("\n")
+        )
     }
 }
 
