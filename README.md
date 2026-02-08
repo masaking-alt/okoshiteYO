@@ -75,3 +75,9 @@
 - アラームの権限UX（Exact alarm / 通知 / DND）を Settings に反映し、説明と導線を揃える
 - 解除フローの失敗時挙動（写真判定失敗→フォールバック等）の文言と待ち時間を調整
 - ストア向けビルド（AAB、署名、versionCode運用、プライバシーポリシー）を整理
+
+## プライバシーポリシー（Play Console 用）
+- テンプレート: `docs/privacy-policy.md` / `docs/privacy-policy.html`
+- Play Console には「公開URL」を設定する必要があります。
+  - 例: GitHub Pages を使う場合、`docs/privacy-policy.html` を公開し、そのURLを登録する
+  - 連絡先（メールアドレス等）は必ず実値に差し替えてください
