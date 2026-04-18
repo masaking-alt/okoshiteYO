@@ -1,5 +1,6 @@
 import React from "react";
 import { Platform, StatusBar, View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { palette } from "../theme/colors";
 
 interface Props {
@@ -11,6 +12,7 @@ interface Props {
   backgroundColor?: string;
   showGiveUpButton?: boolean;
   showBackButton?: boolean;
+  keyboardAware?: boolean;
 }
 
 const AlarmFireLayout: React.FC<Props> = ({
@@ -22,11 +24,12 @@ const AlarmFireLayout: React.FC<Props> = ({
   backgroundColor = palette.sunrise,
   showGiveUpButton = false,
   showBackButton = false,
+  keyboardAware = false,
 }) => {
   const statusBarPadding =
     Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
-  return (
-    <View style={[styles.container, { backgroundColor }]}>
+  const content = (
+    <>
       {showBackButton && onBack && (
         <TouchableOpacity
           style={[styles.backButton, { top: 16 + statusBarPadding }]}
@@ -51,6 +54,27 @@ const AlarmFireLayout: React.FC<Props> = ({
           <Text style={styles.dismissText}>長押しでギブアップ</Text>
         </TouchableOpacity>
       )}
+    </>
+  );
+
+  if (keyboardAware) {
+    return (
+      <KeyboardAwareScrollView
+        style={[styles.keyboardContainer, { backgroundColor }]}
+        contentContainerStyle={styles.keyboardContent}
+        showsVerticalScrollIndicator={false}
+        enableOnAndroid={true}
+        keyboardShouldPersistTaps="handled"
+        extraScrollHeight={28}
+      >
+        {content}
+      </KeyboardAwareScrollView>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor }]}>
+      {content}
     </View>
   );
 };
@@ -61,6 +85,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     paddingHorizontal: 24,
+  },
+  keyboardContainer: {
+    flex: 1,
+  },
+  keyboardContent: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 24,
+    paddingVertical: 32,
   },
   label: {
     color: "#fff",

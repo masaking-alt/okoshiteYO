@@ -125,6 +125,7 @@ const AlarmMathScreen: React.FC<FireProps> = ({
       onGiveUp={onGiveUp}
       onBack={onBack}
       showBackButton={showBackButton}
+      keyboardAware={true}
     >
       <Text style={styles.progress}>
         問題 {index + 1} / {questions.length}
