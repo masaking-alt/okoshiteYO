@@ -28,11 +28,24 @@ plugins {
   id("expo-autolinking-settings")
 }
 
+def appRoot = file("..")
+expoAutolinking.projectRoot = appRoot
+
 extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
   if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
     ex.autolinkLibrariesFromCommand()
   } else {
-    ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
+    ex.autolinkLibrariesFromCommand(
+      expoAutolinking.rnConfigCommand,
+      appRoot,
+      files(
+        new File(appRoot, "yarn.lock"),
+        new File(appRoot, "package-lock.json"),
+        new File(appRoot, "package.json"),
+        new File(appRoot, "react-native.config.js"),
+        file("settings.gradle")
+      )
+    )
   }
 }
 expoAutolinking.useExpoModules()
