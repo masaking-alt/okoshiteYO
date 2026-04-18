@@ -1,30 +1,55 @@
 import React from 'react';
-import { Alert, FlatList, Image, PixelRatio, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, PixelRatio, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Armchair,
+  BookOpen,
+  BottleWine,
+  Clock,
+  Coffee,
+  Flower2,
+  Keyboard,
+  Laptop,
+  Mouse,
+  RadioReceiver,
+  Scissors,
+  Sofa,
+  Soup,
+  Sprout,
+  Table2,
+  Tv,
+  Utensils,
+  UtensilsCrossed,
+  type LucideIcon
+} from 'lucide-react-native';
 import { getAllPhotoTargetLabels, getJapanesePhotoTargetLabel, PHOTO_TARGETS, PhotoTargetLabel } from '../data/photoTargets';
 import { palette, theme } from '../theme/colors';
 
 const MIN_ENABLED_PHOTO_TARGETS = 3;
 const TARGET_ICON_SIZE = PixelRatio.roundToNearestPixel(44);
 
-const TARGET_ICONS: Record<PhotoTargetLabel, number> = {
-  scissors: require('../../assets/icons/scissors.png'),
-  keyboard: require('../../assets/icons/keyboard.png'),
-  mouse: require('../../assets/icons/mouse.png'),
-  bottle: require('../../assets/icons/bottle.png'),
-  remote: require('../../assets/icons/remote.png'),
-  book: require('../../assets/icons/book.png'),
-  cup: require('../../assets/icons/cup.png'),
-  laptop: require('../../assets/icons/laptop.png'),
-  tv: require('../../assets/icons/tv.png'),
-  chair: require('../../assets/icons/chair.png'),
-  couch: require('../../assets/icons/couch.png'),
-  'dining table': require('../../assets/icons/dining_table.png'),
-  'potted plant': require('../../assets/icons/potted_plant.png'),
-  clock: require('../../assets/icons/clock.png'),
-  vase: require('../../assets/icons/vase.png'),
-  bowl: require('../../assets/icons/bowl.png'),
-  spoon: require('../../assets/icons/spoon.png'),
-  fork: require('../../assets/icons/fork.png')
+const TARGET_ICONS: Record<PhotoTargetLabel, LucideIcon> = {
+  scissors: Scissors,
+  keyboard: Keyboard,
+  mouse: Mouse,
+  bottle: BottleWine,
+  // リモコン単体のアイコンがないため、形状が近い受信機を使う
+  remote: RadioReceiver,
+  book: BookOpen,
+  cup: Coffee,
+  laptop: Laptop,
+  tv: Tv,
+  chair: Armchair,
+  couch: Sofa,
+  'dining table': Table2,
+  'potted plant': Sprout,
+  clock: Clock,
+  // 花瓶単体のアイコンがないため、用途が近い花のアイコンを使う
+  vase: Flower2,
+  bowl: Soup,
+  // スプーン単体のアイコンがないため、食器のアイコンを使う
+  spoon: Utensils,
+  // フォーク単体のアイコンがないため、食器のアイコンを使う
+  fork: UtensilsCrossed
 };
 
 type Props = {
@@ -59,6 +84,8 @@ const PhotoTargetsScreen: React.FC<Props> = ({ enabledPhotoTargets, onChangeEnab
 
   const renderItem = ({ item }: { item: (typeof PHOTO_TARGETS)[number] }) => {
     const enabled = enabledPhotoTargets.includes(item.en);
+    const TargetIcon = TARGET_ICONS[item.en];
+    const iconColor = enabled ? palette.sunriseDark : theme.textSecondary;
 
     return (
       <TouchableOpacity
@@ -69,11 +96,14 @@ const PhotoTargetsScreen: React.FC<Props> = ({ enabledPhotoTargets, onChangeEnab
         onPress={() => toggle(item.en)}
         activeOpacity={0.8}
       >
-        <Image
-          style={[styles.targetIcon, { width: TARGET_ICON_SIZE, height: TARGET_ICON_SIZE }]}
-          source={TARGET_ICONS[item.en]}
-          resizeMode="contain"
-        />
+        <View style={styles.targetIconFrame}>
+          <TargetIcon
+            size={TARGET_ICON_SIZE}
+            color={iconColor}
+            strokeWidth={2.2}
+            absoluteStrokeWidth
+          />
+        </View>
         <Text style={styles.gridTitle}>{getJapanesePhotoTargetLabel(item.en)}</Text>
         <Text style={[styles.gridSubtitle, enabled ? styles.gridSubtitleEnabled : styles.gridSubtitleDisabled]}>{item.en}</Text>
         {enabled && (
@@ -162,11 +192,11 @@ const styles = StyleSheet.create({
     marginBottom: 12
   },
   gridCard: {
-    width: '48%', // Approx half with spacing
+    width: '48%',
     backgroundColor: theme.card,
     borderRadius: 20,
     padding: 16,
-    aspectRatio: 1.5,// Square cards
+    aspectRatio: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -174,16 +204,20 @@ const styles = StyleSheet.create({
     position: 'relative'
   },
   gridCardEnabled: {
-    backgroundColor: theme.accentSoft, // Light orange bg
-    borderColor: theme.accent,      // Orange border
+    backgroundColor: theme.accentSoft,
+    borderColor: theme.accent,
   },
   gridCardDisabled: {
     backgroundColor: theme.card,
     borderColor: theme.divider,
     opacity: 0.6
   },
-  targetIcon: {
-    marginBottom: 10
+  targetIconFrame: {
+    width: TARGET_ICON_SIZE,
+    height: TARGET_ICON_SIZE,
+    marginBottom: 10,
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   gridTitle: {
     color: theme.textPrimary,

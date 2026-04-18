@@ -1,7 +1,6 @@
 import React from "react";
 import {
   View,
-  Image,
   Text,
   StyleSheet,
   FlatList,
@@ -9,6 +8,7 @@ import {
   Platform,
   StatusBar,
 } from "react-native";
+import { Settings } from "lucide-react-native";
 import { Alarm } from "../types";
 import { AlarmCard } from "../components/AlarmCard";
 import { palette, theme } from "../theme/colors";
@@ -38,10 +38,11 @@ const HomeScreen: React.FC<Props> = ({
           onPress={onOpenSettings}
           style={styles.settingsButton}
         >
-          <Image
-            style={styles.settingsEmoji}
-            source={require("../../assets/icons/setting.png")}
-            resizeMode="contain"
+          <Settings
+            size={SETTINGS_ICON_SIZE}
+            color={theme.textSecondary}
+            strokeWidth={2.4}
+            absoluteStrokeWidth
           />
           <Text style={styles.settingsText}>設定</Text>
         </TouchableOpacity>
@@ -104,10 +105,6 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     alignItems: "center",
-  },
-  settingsEmoji: {
-    width: SETTINGS_ICON_SIZE,
-    height: SETTINGS_ICON_SIZE,
   },
   settingsText: {
     color: theme.textSecondary,
