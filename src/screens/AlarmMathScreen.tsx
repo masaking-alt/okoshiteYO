@@ -76,13 +76,11 @@ const AlarmMathScreen: React.FC<FireProps> = ({
           setIndex((i) => i + 1);
           setStatus("idle");
           setInputValue("");
-          // focus next input
           setTimeout(() => inputRef.current?.focus(), 50);
         }
       }, 400);
       return;
     }
-    // wrong: disable input for ~3s
     setStatus("wrong");
     setLocked(true);
     if (wrongTimerRef.current) {
@@ -169,20 +167,24 @@ const AlarmMathScreen: React.FC<FireProps> = ({
 const styles = StyleSheet.create({
   question: {
     color: "#fff",
-    fontSize: 24,
-    fontWeight: "700",
+    fontSize: 32,
+    lineHeight: 38,
+    fontWeight: "800",
     textAlign: "center",
   },
   status: {
     color: "#fff",
-    marginTop: 10,
-    fontSize: 14,
+    marginTop: 12,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "600",
     textAlign: "center",
   },
   answerRow: {
     flexDirection: "row",
-    marginTop: 20,
+    marginTop: 22,
     alignItems: "center",
+    width: "100%",
   },
   answerBox: {
     flex: 1,
@@ -199,34 +201,40 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
     marginHorizontal: 6,
     borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.12)",
-    paddingVertical: 12,
-    paddingHorizontal: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     color: "#fff",
-    fontSize: 18,
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: "700",
     textAlign: "center",
   },
   submitButton: {
     marginLeft: 6,
     borderRadius: 12,
     backgroundColor: "rgba(255,255,255,0.18)",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 18,
     alignItems: "center",
     justifyContent: "center",
   },
   submitText: {
     color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "800",
   },
   progress: {
     color: "#fff",
-    fontSize: 14,
+    fontSize: 16,
+    lineHeight: 22,
+    fontWeight: "700",
     textAlign: "center",
-    marginBottom: 8,
+    marginBottom: 10,
   },
 });
 
