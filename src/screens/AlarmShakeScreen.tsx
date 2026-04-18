@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Accelerometer } from 'expo-sensors';
+import ActionFeedback, { ActionFeedbackTone, SUCCESS_FEEDBACK_DURATION_MS } from '../components/ActionFeedback';
 import AlarmFireLayout from '../components/AlarmFireLayout';
 import { FireProps } from './fire/types';
 
@@ -17,8 +18,10 @@ const AlarmShakeScreen: React.FC<FireProps> = ({
 }) => {
   const [shakeCount, setShakeCount] = useState(0);
   const [sensorAvailable, setSensorAvailable] = useState(true);
+  const [completedFeedback, setCompletedFeedback] = useState(false);
   const lastShakeAt = useRef(0);
   const completed = useRef(false);
+  const completeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     let subscription: { remove: () => void } | null = null;
@@ -50,18 +53,36 @@ const AlarmShakeScreen: React.FC<FireProps> = ({
     return () => {
       active = false;
       subscription?.remove();
+      if (completeTimerRef.current) {
+        clearTimeout(completeTimerRef.current);
+      }
     };
   }, []);
 
   useEffect(() => {
     if (shakeCount >= TARGET_SHAKES && !completed.current) {
       completed.current = true;
-      onGiveUp();
+      setCompletedFeedback(true);
+      completeTimerRef.current = setTimeout(() => {
+        onGiveUp();
+      }, SUCCESS_FEEDBACK_DURATION_MS);
     }
   }, [onGiveUp, shakeCount]);
 
   const remaining = Math.max(0, TARGET_SHAKES - shakeCount);
   const progressWidth = `${Math.min(100, (shakeCount / TARGET_SHAKES) * 100)}%` as `${number}%`;
+  const feedback = useMemo<{ message: string; tone: ActionFeedbackTone }>(() => {
+    if (completedFeedback) {
+      return { message: '成功しました。アラームを解除します。', tone: 'success' };
+    }
+    if (!sensorAvailable) {
+      return { message: '加速度センサーが使えません。別の解除方法を選んでください。', tone: 'error' };
+    }
+    if (shakeCount > 0) {
+      return { message: `反応しています。残り ${remaining} 回振ってください。`, tone: 'info' };
+    }
+    return { message: '端末を大きく振るとカウントされます。', tone: 'info' };
+  }, [completedFeedback, remaining, sensorAvailable, shakeCount]);
 
   return (
     <AlarmFireLayout
@@ -78,6 +99,7 @@ const AlarmShakeScreen: React.FC<FireProps> = ({
       <View style={styles.progressOuter}>
         <View style={[styles.progressFill, { width: progressWidth }]} />
       </View>
+      <ActionFeedback message={feedback.message} tone={feedback.tone} />
     </AlarmFireLayout>
   );
 };

@@ -7,6 +7,11 @@ import {
   TextInput,
   Keyboard,
 } from "react-native";
+import ActionFeedback, {
+  ActionFeedbackTone,
+  RETRY_FEEDBACK_DURATION_MS,
+  SUCCESS_FEEDBACK_DURATION_MS,
+} from "../components/ActionFeedback";
 import AlarmFireLayout from "../components/AlarmFireLayout";
 import { FireProps } from "./fire/types";
 
@@ -43,7 +48,7 @@ const AlarmMathScreen: React.FC<FireProps> = ({
     createQuestion(),
   ]);
   const [index, setIndex] = useState<number>(0);
-  const [status, setStatus] = useState<"idle" | "wrong" | "correct">("idle");
+  const [status, setStatus] = useState<"idle" | "invalid" | "wrong" | "correct">("idle");
   const [inputValue, setInputValue] = useState<string>("");
   const inputRef = useRef<TextInput | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -52,16 +57,21 @@ const AlarmMathScreen: React.FC<FireProps> = ({
 
   const current = questions[index];
 
-  const statusText = useMemo(() => {
+  const feedback = useMemo<{ message: string; tone: ActionFeedbackTone }>(() => {
     switch (status) {
       case "correct":
-        return "正解！解除中...";
+        return {
+          message: index === questions.length - 1 ? "成功しました。アラームを解除します。" : "正解です。次の問題へ進みます。",
+          tone: "success",
+        };
+      case "invalid":
+        return { message: "数字を入力してから確認してください。", tone: "error" };
       case "wrong":
-        return "違います。もう一度。";
+        return { message: "答えが違います。3秒後に再入力できます。", tone: "error" };
       default:
-        return "正解を入力して解除";
+        return { message: "答えを入力して確認してください。", tone: "info" };
     }
-  }, [status]);
+  }, [index, questions.length, status]);
 
   const handleAnswer = (value: number) => {
     if (status === "correct") {
@@ -78,7 +88,7 @@ const AlarmMathScreen: React.FC<FireProps> = ({
           setInputValue("");
           setTimeout(() => inputRef.current?.focus(), 50);
         }
-      }, 400);
+      }, SUCCESS_FEEDBACK_DURATION_MS);
       return;
     }
     setStatus("wrong");
@@ -91,14 +101,14 @@ const AlarmMathScreen: React.FC<FireProps> = ({
       setLocked(false);
       setInputValue("");
       setTimeout(() => inputRef.current?.focus(), 50);
-    }, 3000);
+    }, RETRY_FEEDBACK_DURATION_MS);
   };
 
   const handleSubmit = () => {
     if (locked || status === "correct") return;
     const parsed = parseInt(inputValue, 10);
     if (Number.isNaN(parsed)) {
-      setStatus("wrong");
+      setStatus("invalid");
       return;
     }
     handleAnswer(parsed);
@@ -131,13 +141,18 @@ const AlarmMathScreen: React.FC<FireProps> = ({
       <Text style={styles.question}>
         {current.left} + {current.right} = ?
       </Text>
-      <Text style={styles.status}>{statusText}</Text>
+      <ActionFeedback message={feedback.message} tone={feedback.tone} />
       <View style={styles.answerRow}>
         <TextInput
           ref={inputRef}
           style={styles.input}
           value={inputValue}
-          onChangeText={(t) => setInputValue(t)}
+          onChangeText={(t) => {
+            setInputValue(t);
+            if (status === "invalid") {
+              setStatus("idle");
+            }
+          }}
           placeholder="答えを入力"
           placeholderTextColor="rgba(255,255,255,0.6)"
           keyboardType="numeric"
@@ -170,14 +185,6 @@ const styles = StyleSheet.create({
     fontSize: 32,
     lineHeight: 38,
     fontWeight: "800",
-    textAlign: "center",
-  },
-  status: {
-    color: "#fff",
-    marginTop: 12,
-    fontSize: 16,
-    lineHeight: 22,
-    fontWeight: "600",
     textAlign: "center",
   },
   answerRow: {

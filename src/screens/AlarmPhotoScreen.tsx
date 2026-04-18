@@ -1,6 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { TouchableOpacity, View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import ActionFeedback, {
+  ActionFeedbackTone,
+  SUCCESS_FEEDBACK_DURATION_MS
+} from '../components/ActionFeedback';
 import AlarmFireLayout from '../components/AlarmFireLayout';
 import { FireMode, FireProps } from './fire/types';
 import { getJapanesePhotoTargetLabel, pickRandomPhotoTargetLabel, PhotoTargetLabel } from '../data/photoTargets';
@@ -17,6 +21,11 @@ const FALLBACK_MODES: FireMode[] = ['math', 'shake'];
 type DetectError = {
   code?: string;
   message?: string;
+};
+
+type PhotoFeedback = {
+  message: string;
+  tone: ActionFeedbackTone;
 };
 
 const describeDetectError = (error: unknown): DetectError => {
@@ -55,8 +64,12 @@ const AlarmPhotoScreen: React.FC<Props> = ({
   const [isCapturing, setIsCapturing] = useState(false);
   const [targetLabel, setTargetLabel] = useState<PhotoTargetLabel>(() => pickRandomPhotoTargetLabel(enabledTargets));
   const [attempts, setAttempts] = useState(0);
-  const [status, setStatus] = useState<string>('');
+  const [feedback, setFeedback] = useState<PhotoFeedback>({
+    message: '対象物が写るように撮影してください。',
+    tone: 'info'
+  });
   const fallbackTriggered = useRef(false);
+  const actionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const remainingAttempts = Math.max(0, MAX_ATTEMPTS - attempts);
 
@@ -65,18 +78,26 @@ const AlarmPhotoScreen: React.FC<Props> = ({
       return;
     }
     fallbackTriggered.current = true;
-    setStatus(message);
+    setFeedback({ message, tone: 'error' });
     const fallback = FALLBACK_MODES[Math.floor(Math.random() * FALLBACK_MODES.length)];
-    setTimeout(() => {
+    actionTimerRef.current = setTimeout(() => {
       onFallback(fallback);
-    }, 400);
+    }, SUCCESS_FEEDBACK_DURATION_MS);
   };
 
   useEffect(() => {
     setTargetLabel(pickRandomPhotoTargetLabel(enabledTargets));
     setAttempts(0);
-    setStatus('');
+    setFeedback({
+      message: '対象物が写るように撮影してください。',
+      tone: 'info'
+    });
     fallbackTriggered.current = false;
+    return () => {
+      if (actionTimerRef.current) {
+        clearTimeout(actionTimerRef.current);
+      }
+    };
   }, [enabledTargets, time]);
 
   const handleCapture = async () => {
@@ -88,22 +109,31 @@ const AlarmPhotoScreen: React.FC<Props> = ({
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.6 });
       const { matched } = await detectObject(photo.uri, targetLabel);
       if (matched) {
-        setStatus('一致しました');
-        onGiveUp();
+        setFeedback({ message: '成功しました。アラームを解除します。', tone: 'success' });
+        actionTimerRef.current = setTimeout(() => {
+          onGiveUp();
+        }, SUCCESS_FEEDBACK_DURATION_MS);
         return;
       }
       const nextAttempts = attempts + 1;
       setAttempts(nextAttempts);
-      setStatus(`一致しませんでした (対象: ${getJapanesePhotoTargetLabel(targetLabel)})`);
       if (nextAttempts >= MAX_ATTEMPTS) {
-        triggerFallback('一致しないため別の解除へ切替');
+        triggerFallback('一致しませんでした。別の解除方法へ切り替えます。');
+      } else {
+        setFeedback({
+          message: `一致しませんでした。残り ${MAX_ATTEMPTS - nextAttempts} 回撮影できます。`,
+          tone: 'error'
+        });
       }
     } catch (error) {
       const { code, message } = describeDetectError(error);
       const hint = hintForErrorCode(code);
       const debugMessage = [code, message, hint].filter(Boolean).join(' / ');
       console.warn('Failed to detect object', { error, targetLabel });
-      setStatus(debugMessage ? `判定に失敗しました (${debugMessage})` : '判定に失敗しました');
+      setFeedback({
+        message: debugMessage ? `判定に失敗しました。${debugMessage}` : '判定に失敗しました。もう一度撮影してください。',
+        tone: 'error'
+      });
     } finally {
       setIsCapturing(false);
     }
@@ -163,7 +193,7 @@ const AlarmPhotoScreen: React.FC<Props> = ({
       </TouchableOpacity>
       <Text style={styles.captureLabel}>{buttonText}</Text>
       <Text style={styles.hint}>{description}</Text>
-      {!!status && <Text style={styles.status}>{status}</Text>}
+      <ActionFeedback message={feedback.message} tone={feedback.tone} />
     </AlarmFireLayout>
   );
 };
@@ -240,8 +270,7 @@ const styles = StyleSheet.create({
   captureLabel: {
     color: '#fff',
     fontWeight: '700',
-    marginTop: 10
-    ,
+    marginTop: 10,
     alignSelf: 'center',
     textAlign: 'center'
   },
@@ -256,12 +285,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     marginTop: 12,
     textAlign: 'center'
-  },
-  status: {
-    color: '#fff',
-    marginTop: 8,
-    textAlign: 'center',
-    fontSize: 12
   }
 });
 
