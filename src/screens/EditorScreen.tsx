@@ -2,6 +2,7 @@ import React, { useMemo, useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, NativeScrollEvent, NativeSyntheticEvent, TextInput } from 'react-native';
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import { AlarmAction, Alarm } from '../types';
+import { ALARM_VOLUME_STEP, formatAlarmVolume, normalizeAlarmVolume } from '../services/alarmVolume';
 import { palette, theme } from '../theme/colors';
 
 interface Props {
@@ -90,6 +91,7 @@ const EditorScreen: React.FC<Props> = ({
   const [selectedAction, setSelectedAction] = useState<AlarmAction>(alarm?.action ?? defaultAction);
   const [repeatDays, setRepeatDays] = useState<string[]>(alarm?.repeatDays ?? ['月', '火', '水', '木', '金','土','日']);
   const [memo, setMemo] = useState<string>(alarm?.title ?? '');
+  const [volume, setVolume] = useState<number>(normalizeAlarmVolume(alarm?.volume));
 
   const toggleDay = (day: string) => {
     setRepeatDays((prev) => {
@@ -114,6 +116,7 @@ const EditorScreen: React.FC<Props> = ({
       repeatDays,
       action: selectedAction,
       mode,
+      volume: normalizeAlarmVolume(volume),
       active: alarm?.active ?? true
     };
     onSave(payload);
@@ -212,6 +215,28 @@ const EditorScreen: React.FC<Props> = ({
         )}
 
 
+
+        <Text style={styles.label}>アラーム音量</Text>
+        <View style={styles.volumeCard}>
+          <Text style={styles.volumeValue}>{formatAlarmVolume(volume)}</Text>
+          <View style={styles.volumeButtonRow}>
+            <TouchableOpacity
+              style={styles.volumeButton}
+              onPress={() => setVolume((current) => normalizeAlarmVolume(current - ALARM_VOLUME_STEP))}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.volumeButtonText}>−</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.volumeButton}
+              onPress={() => setVolume((current) => normalizeAlarmVolume(current + ALARM_VOLUME_STEP))}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.volumeButtonText}>＋</Text>
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.volumeHelp}>発火中だけ端末のアラーム音量へ反映します</Text>
+        </View>
 
         <Text style={styles.label}>メモ</Text>
         <TextInput
@@ -611,6 +636,44 @@ const styles = StyleSheet.create({
   actionBadgeText: {
     color: palette.ink,
     fontWeight: '700'
+  },
+  volumeCard: {
+    backgroundColor: theme.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.divider,
+    padding: 16
+  },
+  volumeValue: {
+    color: theme.textPrimary,
+    fontSize: 28,
+    fontWeight: '700',
+    textAlign: 'center'
+  },
+  volumeButtonRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 14
+  },
+  volumeButton: {
+    flex: 1,
+    backgroundColor: palette.sunrise,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center'
+  },
+  volumeButtonText: {
+    color: palette.white,
+    fontSize: 24,
+    fontWeight: '700',
+    lineHeight: 26
+  },
+  volumeHelp: {
+    color: theme.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 12,
+    textAlign: 'center'
   },
   noteBox: {
     borderRadius: 16,

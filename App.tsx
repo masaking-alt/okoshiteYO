@@ -26,6 +26,7 @@ import {
   scheduleAlarm,
   stopAlarm
 } from './src/services/alarmScheduler';
+import { normalizeAlarmVolume } from './src/services/alarmVolume';
 import { theme } from './src/theme/colors';
 
 type Screen = 'home' | 'editor' | 'settings' | 'photoTargets' | 'demo' | 'alarm';
@@ -63,8 +64,9 @@ const sanitizeAlarm = (value: unknown): Alarm | null => {
   const repeatDays = Array.isArray(record.repeatDays) ? record.repeatDays.filter((d) => typeof d === 'string') : [];
   const action = sanitizeAlarmAction(record.action);
   const mode = sanitizeMode(record.mode);
+  const volume = normalizeAlarmVolume(record.volume);
   const active = typeof record.active === 'boolean' ? record.active : true;
-  return { id, title, time, repeatDays, action, mode, active };
+  return { id, title, time, repeatDays, action, mode, volume, active };
 };
 
 const sanitizeAlarmList = (value: unknown): Alarm[] | null => {

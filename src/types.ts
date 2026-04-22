@@ -7,5 +7,6 @@ export interface Alarm {
   repeatDays: string[];
   action: AlarmAction;
   mode: 'fixed' | 'random';
+  volume: number;
   active: boolean;
 }
