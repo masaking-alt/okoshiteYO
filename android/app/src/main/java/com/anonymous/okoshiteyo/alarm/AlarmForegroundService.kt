@@ -26,6 +26,8 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.anonymous.okoshiteyo.BuildConfig
 import com.anonymous.okoshiteyo.R
+import kotlin.math.max
+import kotlin.math.roundToInt
 
 private const val TAG = "AlarmForegroundService"
 
@@ -37,6 +39,7 @@ class AlarmForegroundService : Service() {
     private var mediaPlayer: MediaPlayer? = null
     private var audioManager: AudioManager? = null
     private var focusRequest: AudioFocusRequest? = null
+    private var originalAlarmStreamVolume: Int? = null
     private var wakeLock: PowerManager.WakeLock? = null
     private var vibrator: Vibrator? = null
     private val vibrationHandler = Handler(Looper.getMainLooper())
@@ -94,7 +97,8 @@ class AlarmForegroundService : Service() {
             .build()
 
         startForeground(AlarmConstants.NOTIFICATION_ID, notification)
-        startRingtone()
+        val alarmVolume = payload?.getDouble(AlarmConstants.EXTRA_VOLUME, DEFAULT_ALARM_VOLUME) ?: DEFAULT_ALARM_VOLUME
+        startRingtone(alarmVolume)
         startVibration()
         launchAlarmActivity(fullScreenPending)
         acquireWakeLock()
@@ -127,9 +131,11 @@ class AlarmForegroundService : Service() {
         manager.createNotificationChannel(channel)
     }
 
-    private fun startRingtone() {
+    private fun startRingtone(alarmVolume: Double) {
         val alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
         audioManager = getSystemService(AudioManager::class.java)
+        val adjustedStreamVolume = applyAlarmStreamVolume(alarmVolume)
+        val playerVolume = if (adjustedStreamVolume) 1f else normalizedVolume(alarmVolume).toFloat()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
                 .setAudioAttributes(alarmAudioAttributes)
@@ -148,6 +154,7 @@ class AlarmForegroundService : Service() {
             mediaPlayer = MediaPlayer().apply {
                 setAudioAttributes(alarmAudioAttributes)
                 setDataSource(this@AlarmForegroundService, alarmUri)
+                setVolume(playerVolume, playerVolume)
                 isLooping = true
                 prepare()
                 start()
@@ -172,8 +179,48 @@ class AlarmForegroundService : Service() {
                 manager.abandonAudioFocus(audioFocusListener)
             }
         }
+        restoreAlarmStreamVolume()
         focusRequest = null
         audioManager = null
+    }
+
+    private fun applyAlarmStreamVolume(alarmVolume: Double): Boolean {
+        val manager = audioManager ?: return false
+        val maxVolume = manager.getStreamMaxVolume(AudioManager.STREAM_ALARM)
+        if (maxVolume <= 0) {
+            return false
+        }
+        val targetVolume = max(1, (maxVolume * normalizedVolume(alarmVolume)).roundToInt())
+            .coerceAtMost(maxVolume)
+        return try {
+            if (originalAlarmStreamVolume == null) {
+                originalAlarmStreamVolume = manager.getStreamVolume(AudioManager.STREAM_ALARM)
+            }
+            manager.setStreamVolume(AudioManager.STREAM_ALARM, targetVolume, 0)
+            true
+        } catch (error: SecurityException) {
+            if (BuildConfig.DEBUG) {
+                Log.w(TAG, "Failed to set alarm stream volume", error)
+            }
+            false
+        }
+    }
+
+    private fun restoreAlarmStreamVolume() {
+        val previousVolume = originalAlarmStreamVolume ?: return
+        try {
+            audioManager?.setStreamVolume(AudioManager.STREAM_ALARM, previousVolume, 0)
+        } catch (error: SecurityException) {
+            if (BuildConfig.DEBUG) {
+                Log.w(TAG, "Failed to restore alarm stream volume", error)
+            }
+        } finally {
+            originalAlarmStreamVolume = null
+        }
+    }
+
+    private fun normalizedVolume(value: Double): Double {
+        return value.coerceIn(MIN_ALARM_VOLUME, MAX_ALARM_VOLUME)
     }
 
     private fun startVibration() {
@@ -280,6 +327,9 @@ class AlarmForegroundService : Service() {
     companion object {
         private const val VIBRATE_MS = 1000L
         private const val VIBRATE_PAUSE_MS = 500L
+        private const val MIN_ALARM_VOLUME = 0.2
+        private const val MAX_ALARM_VOLUME = 1.0
+        private const val DEFAULT_ALARM_VOLUME = 0.8
 
         fun stop(context: Context) {
             val intent = Intent(context, AlarmForegroundService::class.java).apply {

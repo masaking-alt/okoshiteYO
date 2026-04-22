@@ -55,6 +55,9 @@ class AlarmModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
                     val repeatDays = options.getArray("repeatDays")
                     putStringArray(AlarmConstants.EXTRA_REPEAT_DAYS, toStringArray(repeatDays))
                 }
+                if (options.hasKey("volume") && !options.isNull("volume")) {
+                    putDouble(AlarmConstants.EXTRA_VOLUME, options.getDouble("volume"))
+                }
             }
         }
         scheduleInternal(alarmId, timestamp, payload, promise)

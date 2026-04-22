@@ -9,6 +9,7 @@ object AlarmConstants {
     const val EXTRA_MODE = "mode"
     const val EXTRA_TIME = "time"
     const val EXTRA_REPEAT_DAYS = "repeat_days"
+    const val EXTRA_VOLUME = "volume"
 
     const val CHANNEL_ID = "okoshiteyo_alarm"
     const val CHANNEL_NAME = "Alarm"

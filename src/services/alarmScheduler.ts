@@ -1,11 +1,12 @@
 import { NativeModules, PermissionsAndroid, Platform } from 'react-native';
 import { Alarm, AlarmAction } from '../types';
+import { normalizeAlarmVolume } from './alarmVolume';
 
 type AlarmModuleType = {
   scheduleAlarm: (
     alarmId: string,
     timestamp: number,
-    options?: { title?: string; mode?: string; time?: string; repeatDays?: string[] }
+    options?: { title?: string; mode?: string; time?: string; repeatDays?: string[]; volume?: number }
   ) => Promise<boolean>;
   cancelAlarm: (alarmId: string) => Promise<boolean>;
   stopAlarm: () => Promise<boolean>;
@@ -30,6 +31,7 @@ export type AlarmScheduleInput = {
   time: string;
   repeatDays: string[];
   fireMode: FireMode;
+  volume: number;
 };
 
 export type AlarmFirePayload = {
@@ -39,6 +41,7 @@ export type AlarmFirePayload = {
   time?: string;
   repeatDays?: string[];
   repeat_days?: string[];
+  volume?: number;
 };
 
 const EN_DAY_TO_INDEX: Record<string, number> = {
@@ -108,7 +111,8 @@ export const buildScheduleInput = (alarm: Alarm): AlarmScheduleInput => ({
   title: alarm.title.trim() || 'アラーム',
   time: alarm.time,
   repeatDays: alarm.repeatDays,
-  fireMode: alarm.mode === 'random' ? 'random' : alarm.action
+  fireMode: alarm.mode === 'random' ? 'random' : alarm.action,
+  volume: normalizeAlarmVolume(alarm.volume)
 });
 
 export const buildScheduleInputFromPayload = (payload: AlarmFirePayload): AlarmScheduleInput | null => {
@@ -121,7 +125,8 @@ export const buildScheduleInputFromPayload = (payload: AlarmFirePayload): AlarmS
     title: (payload.title ?? '').trim() || 'アラーム',
     time: payload.time,
     repeatDays,
-    fireMode: coerceFireMode(payload.mode)
+    fireMode: coerceFireMode(payload.mode),
+    volume: normalizeAlarmVolume(payload.volume)
   };
 };
 
@@ -167,10 +172,11 @@ export const scheduleAlarm = async (input: AlarmScheduleInput): Promise<number |
   if (!triggerAt) {
     return null;
   }
-  const options: { title?: string; mode?: string; time?: string; repeatDays?: string[] } = {
+  const options: { title?: string; mode?: string; time?: string; repeatDays?: string[]; volume?: number } = {
     title: input.title,
     mode: input.fireMode,
-    time: input.time
+    time: input.time,
+    volume: normalizeAlarmVolume(input.volume)
   };
   if (input.repeatDays.length > 0) {
     options.repeatDays = input.repeatDays;
