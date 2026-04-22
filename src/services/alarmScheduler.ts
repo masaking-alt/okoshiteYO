@@ -14,7 +14,9 @@ type AlarmModuleType = {
   getPendingAlarm?: () => Promise<AlarmFirePayload | null>;
   clearPendingAlarm?: () => Promise<boolean>;
   canScheduleExactAlarms?: () => Promise<boolean>;
+  canUseFullScreenIntent?: () => Promise<boolean>;
   openExactAlarmSettings?: () => Promise<boolean>;
+  openFullScreenIntentSettings?: () => Promise<boolean>;
   openNotificationSettings?: () => Promise<boolean>;
   openDndSettings?: () => Promise<boolean>;
 };
@@ -229,11 +231,25 @@ export const canScheduleExactAlarms = async (): Promise<boolean> => {
   return alarmModule.canScheduleExactAlarms();
 };
 
+export const canUseFullScreenIntent = async (): Promise<boolean> => {
+  if (!hasAlarmModule || !alarmModule?.canUseFullScreenIntent) {
+    return true;
+  }
+  return alarmModule.canUseFullScreenIntent();
+};
+
 export const openExactAlarmSettings = async (): Promise<void> => {
   if (!hasAlarmModule || !alarmModule?.openExactAlarmSettings) {
     return;
   }
   await alarmModule.openExactAlarmSettings();
+};
+
+export const openFullScreenIntentSettings = async (): Promise<void> => {
+  if (!hasAlarmModule || !alarmModule?.openFullScreenIntentSettings) {
+    return;
+  }
+  await alarmModule.openFullScreenIntentSettings();
 };
 
 export const openNotificationSettings = async (): Promise<void> => {

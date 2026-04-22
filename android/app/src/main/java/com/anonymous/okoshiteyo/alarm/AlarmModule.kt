@@ -118,6 +118,32 @@ class AlarmModule(reactContext: ReactApplicationContext) : ReactContextBaseJavaM
     }
 
     @ReactMethod
+    fun canUseFullScreenIntent(promise: Promise) {
+        val allowed = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val notificationManager =
+                reactApplicationContext.getSystemService(NotificationManager::class.java)
+            notificationManager.canUseFullScreenIntent()
+        } else {
+            true
+        }
+        promise.resolve(allowed)
+    }
+
+    @ReactMethod
+    fun openFullScreenIntentSettings(promise: Promise) {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT).apply {
+                data = Uri.parse("package:${reactApplicationContext.packageName}")
+            }
+        } else {
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.parse("package:${reactApplicationContext.packageName}")
+            }
+        }
+        startSettingsIntent(intent, promise)
+    }
+
+    @ReactMethod
     fun canBypassDnd(promise: Promise) {
         val notificationManager =
             reactApplicationContext.getSystemService(NotificationManager::class.java)

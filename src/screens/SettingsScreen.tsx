@@ -2,7 +2,13 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, ScrollView, Alert, Linking } from 'react-native';
 import { AlarmAction } from '../types';
 import { palette, theme } from '../theme/colors';
-import { ensureNotificationPermission, openDndSettings, openExactAlarmSettings, openNotificationSettings } from '../services/alarmScheduler';
+import {
+  ensureNotificationPermission,
+  openDndSettings,
+  openExactAlarmSettings,
+  openFullScreenIntentSettings,
+  openNotificationSettings
+} from '../services/alarmScheduler';
 
 interface Props {
   currentAction: AlarmAction;
@@ -51,6 +57,33 @@ const SettingsScreen: React.FC<Props> = ({
     }
   };
 
+  const openAlarmSettings = async () => {
+    try {
+      await openExactAlarmSettings();
+    } catch (error) {
+      console.warn('Failed to open exact alarm settings', error);
+      Alert.alert('設定を開けませんでした');
+    }
+  };
+
+  const openFullScreenSettings = async () => {
+    try {
+      await openFullScreenIntentSettings();
+    } catch (error) {
+      console.warn('Failed to open full screen intent settings', error);
+      Alert.alert('設定を開けませんでした');
+    }
+  };
+
+  const openDndPermissionSettings = async () => {
+    try {
+      await openDndSettings();
+    } catch (error) {
+      console.warn('Failed to open DND settings', error);
+      Alert.alert('設定を開けませんでした');
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.toolbar}>
@@ -94,6 +127,38 @@ const SettingsScreen: React.FC<Props> = ({
         </TouchableOpacity>
 
         <Text style={styles.sectionLabel}>権限と設定</Text>
+
+        <TouchableOpacity style={styles.rowCard} onPress={requestNotifications}>
+          <View>
+            <Text style={styles.rowTitle}>通知の許可</Text>
+            <Text style={styles.rowSubtitle}>発火時の通知と解除画面表示に使います</Text>
+          </View>
+          <Text style={styles.rowStatus}>確認</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.rowCard} onPress={openAlarmSettings}>
+          <View>
+            <Text style={styles.rowTitle}>正確なアラーム</Text>
+            <Text style={styles.rowSubtitle}>指定時刻に発火するための端末設定です</Text>
+          </View>
+          <Text style={styles.rowStatus}>開く</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.rowCard} onPress={openFullScreenSettings}>
+          <View>
+            <Text style={styles.rowTitle}>全画面通知</Text>
+            <Text style={styles.rowSubtitle}>スリープ中に解除画面を最前面へ表示します</Text>
+          </View>
+          <Text style={styles.rowStatus}>開く</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.rowCard} onPress={openDndPermissionSettings}>
+          <View>
+            <Text style={styles.rowTitle}>おやすみモード</Text>
+            <Text style={styles.rowSubtitle}>端末側でアラーム通知の扱いを確認できます</Text>
+          </View>
+          <Text style={styles.rowStatus}>開く</Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.rowCard} onPress={openAppSettings}>
           <View>

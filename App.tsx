@@ -16,12 +16,14 @@ import {
   buildScheduleInputFromPayload,
   cancelAlarm,
   canScheduleExactAlarms,
+  canUseFullScreenIntent,
   clearPendingAlarm,
   coerceFireMode,
   ensureNotificationPermission,
   finishAlarmActivity,
   getPendingAlarm,
   openExactAlarmSettings,
+  openFullScreenIntentSettings,
   openNotificationSettings,
   scheduleAlarm,
   stopAlarm
@@ -231,6 +233,14 @@ const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
     if (!notificationsAllowed) {
       Alert.alert('通知の許可が必要', '通知権限が無いと保存できません。', [
         { text: '設定を開く', onPress: () => openNotificationSettings() },
+        { text: 'キャンセル', style: 'cancel' }
+      ]);
+      return false;
+    }
+    const fullScreenAllowed = await canUseFullScreenIntent();
+    if (!fullScreenAllowed) {
+      Alert.alert('全画面表示の許可が必要', 'スリープ中でも解除画面を開くため、全画面通知を許可してください。', [
+        { text: '設定を開く', onPress: () => openFullScreenIntentSettings() },
         { text: 'キャンセル', style: 'cancel' }
       ]);
       return false;
