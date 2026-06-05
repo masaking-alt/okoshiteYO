@@ -1,14 +1,8 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
-import {
-  TouchableOpacity,
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Keyboard,
-} from "react-native";
-import AlarmFireLayout from "../components/AlarmFireLayout";
-import { FireProps } from "./fire/types";
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Keyboard, StyleSheet, View } from 'react-native';
+import { Button, Text, TextInput as PaperTextInput } from 'react-native-paper';
+import AlarmFireLayout from '../components/AlarmFireLayout';
+import { FireProps } from './fire/types';
 
 type Question = {
   left: number;
@@ -31,21 +25,11 @@ const createQuestion = (): Question => {
   return { left, right, answer, options: shuffled };
 };
 
-const AlarmMathScreen: React.FC<FireProps> = ({
-  time,
-  onGiveUp,
-  onBack,
-  showBackButton,
-}) => {
-  const [questions] = useState<Question[]>(() => [
-    createQuestion(),
-    createQuestion(),
-    createQuestion(),
-  ]);
+const AlarmMathScreen: React.FC<FireProps> = ({ time, onGiveUp, onBack, showBackButton }) => {
+  const [questions] = useState<Question[]>(() => [createQuestion(), createQuestion(), createQuestion()]);
   const [index, setIndex] = useState<number>(0);
-  const [status, setStatus] = useState<"idle" | "wrong" | "correct">("idle");
-  const [inputValue, setInputValue] = useState<string>("");
-  const inputRef = useRef<TextInput | null>(null);
+  const [status, setStatus] = useState<'idle' | 'wrong' | 'correct'>('idle');
+  const [inputValue, setInputValue] = useState<string>('');
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [locked, setLocked] = useState<boolean>(false);
   const wrongTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -54,53 +38,52 @@ const AlarmMathScreen: React.FC<FireProps> = ({
 
   const statusText = useMemo(() => {
     switch (status) {
-      case "correct":
-        return "正解！解除中...";
-      case "wrong":
-        return "違います。もう一度。";
+      case 'correct':
+        return '正解。解除中です。';
+      case 'wrong':
+        return '違います。少し待って再入力してください。';
       default:
-        return "正解を入力して解除";
+        return '正解を入力して解除';
     }
   }, [status]);
 
   const handleAnswer = (value: number) => {
-    if (status === "correct") {
+    if (status === 'correct') {
       return;
     }
     if (value === current.answer) {
-      setStatus("correct");
+      setStatus('correct');
       timerRef.current = setTimeout(() => {
         if (index === questions.length - 1) {
           onGiveUp();
         } else {
           setIndex((i) => i + 1);
-          setStatus("idle");
-          setInputValue("");
-          // focus next input
-          setTimeout(() => inputRef.current?.focus(), 50);
+          setStatus('idle');
+          setInputValue('');
         }
       }, 400);
       return;
     }
-    // wrong: disable input for ~3s
-    setStatus("wrong");
+
+    setStatus('wrong');
     setLocked(true);
     if (wrongTimerRef.current) {
       clearTimeout(wrongTimerRef.current);
     }
     wrongTimerRef.current = setTimeout(() => {
-      setStatus("idle");
+      setStatus('idle');
       setLocked(false);
-      setInputValue("");
-      setTimeout(() => inputRef.current?.focus(), 50);
+      setInputValue('');
     }, 3000);
   };
 
   const handleSubmit = () => {
-    if (locked || status === "correct") return;
-    const parsed = parseInt(inputValue, 10);
+    if (locked || status === 'correct') {
+      return;
+    }
+    const parsed = Number.parseInt(inputValue, 10);
     if (Number.isNaN(parsed)) {
-      setStatus("wrong");
+      setStatus('wrong');
       return;
     }
     handleAnswer(parsed);
@@ -119,47 +102,42 @@ const AlarmMathScreen: React.FC<FireProps> = ({
   }, []);
 
   return (
-    <AlarmFireLayout
-      time={time}
-      label="計算を解かないと止まらない"
-      onGiveUp={onGiveUp}
-      onBack={onBack}
-      showBackButton={showBackButton}
-    >
-      <Text style={styles.progress}>
+    <AlarmFireLayout time={time} label="計算を解かないと止まらない" onGiveUp={onGiveUp} onBack={onBack} showBackButton={showBackButton}>
+      <Text variant="labelLarge" style={styles.progress}>
         問題 {index + 1} / {questions.length}
       </Text>
-      <Text style={styles.question}>
+      <Text variant="headlineMedium" style={styles.question}>
         {current.left} + {current.right} = ?
       </Text>
-      <Text style={styles.status}>{statusText}</Text>
+      <Text variant="bodyMedium" style={styles.status}>
+        {statusText}
+      </Text>
       <View style={styles.answerRow}>
-        <TextInput
-          ref={inputRef}
-          style={styles.input}
+        <PaperTextInput
+          mode="outlined"
           value={inputValue}
-          onChangeText={(t) => setInputValue(t)}
-          placeholder="答えを入力"
-          placeholderTextColor="rgba(255,255,255,0.6)"
-          keyboardType="numeric"
+          onChangeText={setInputValue}
+          placeholder="答え"
+          keyboardType="number-pad"
           returnKeyType="done"
-          editable={!locked && status !== "correct"}
+          editable={!locked && status !== 'correct'}
           onSubmitEditing={handleSubmit}
+          style={styles.input}
+          textColor="#fff"
+          placeholderTextColor="rgba(255,255,255,0.7)"
+          outlineColor="rgba(255,255,255,0.55)"
+          activeOutlineColor="#fff"
         />
-        <TouchableOpacity
-          style={[
-            styles.submitButton,
-            locked || status === "correct" ? { opacity: 0.6 } : undefined,
-          ]}
-          onPress={() => {
-            if (!locked && status !== "correct") {
-              handleSubmit();
-            }
-          }}
-          activeOpacity={0.85}
+        <Button
+          mode="contained-tonal"
+          disabled={locked || status === 'correct'}
+          buttonColor="rgba(255,255,255,0.24)"
+          textColor="#fff"
+          style={styles.submitButton}
+          onPress={handleSubmit}
         >
-          <Text style={styles.submitText}>確認</Text>
-        </TouchableOpacity>
+          確認
+        </Button>
       </View>
     </AlarmFireLayout>
   );
@@ -167,66 +145,33 @@ const AlarmMathScreen: React.FC<FireProps> = ({
 
 const styles = StyleSheet.create({
   question: {
-    color: "#fff",
-    fontSize: 24,
-    fontWeight: "700",
-    textAlign: "center",
+    color: '#fff',
+    fontWeight: '700',
+    textAlign: 'center'
   },
   status: {
-    color: "#fff",
+    color: '#fff',
     marginTop: 10,
-    fontSize: 14,
-    textAlign: "center",
+    textAlign: 'center'
   },
   answerRow: {
-    flexDirection: "row",
+    flexDirection: 'row',
     marginTop: 20,
-    alignItems: "center",
-  },
-  answerBox: {
-    flex: 1,
-    marginHorizontal: 6,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-  answerText: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "700",
+    alignItems: 'center',
+    gap: 10
   },
   input: {
     flex: 1,
-    marginHorizontal: 6,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.12)",
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    color: "#fff",
-    fontSize: 18,
-    textAlign: "center",
+    backgroundColor: 'rgba(255,255,255,0.08)'
   },
   submitButton: {
-    marginLeft: 6,
-    borderRadius: 12,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  submitText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
+    alignSelf: 'center'
   },
   progress: {
-    color: "#fff",
-    fontSize: 14,
-    textAlign: "center",
-    marginBottom: 8,
-  },
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 8
+  }
 });
 
 export default AlarmMathScreen;

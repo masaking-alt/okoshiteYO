@@ -1,10 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { TouchableOpacity, View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { StyleSheet, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Button, ProgressBar, Text } from 'react-native-paper';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import AlarmFireLayout from '../components/AlarmFireLayout';
 import { FireMode, FireProps } from './fire/types';
 import { getJapanesePhotoTargetLabel, pickRandomPhotoTargetLabel, PhotoTargetLabel } from '../data/photoTargets';
 import { detectObject } from '../services/objectDetection';
+import { palette } from '../theme/colors';
 
 type Props = FireProps & {
   onFallback?: (mode: FireMode) => void;
@@ -41,14 +43,7 @@ const hintForErrorCode = (code?: string) => {
   }
 };
 
-const AlarmPhotoScreen: React.FC<Props> = ({
-  time,
-  onGiveUp,
-  onFallback,
-  onBack,
-  showBackButton,
-  enabledTargets
-}) => {
+const AlarmPhotoScreen: React.FC<Props> = ({ time, onGiveUp, onFallback, onBack, showBackButton, enabledTargets }) => {
   const { height: windowHeight } = useWindowDimensions();
   const cameraRef = useRef<CameraView | null>(null);
   const [permission, requestPermission] = useCameraPermissions();
@@ -86,6 +81,10 @@ const AlarmPhotoScreen: React.FC<Props> = ({
     setIsCapturing(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.6 });
+      if (!photo?.uri) {
+        setStatus('撮影に失敗しました');
+        return;
+      }
       const { matched } = await detectObject(photo.uri, targetLabel);
       if (matched) {
         setStatus('一致しました');
@@ -94,7 +93,7 @@ const AlarmPhotoScreen: React.FC<Props> = ({
       }
       const nextAttempts = attempts + 1;
       setAttempts(nextAttempts);
-      setStatus(`一致しませんでした (対象: ${getJapanesePhotoTargetLabel(targetLabel)})`);
+      setStatus(`一致しませんでした。対象: ${getJapanesePhotoTargetLabel(targetLabel)}`);
       if (nextAttempts >= MAX_ATTEMPTS) {
         triggerFallback('一致しないため別の解除へ切替');
       }
@@ -109,82 +108,85 @@ const AlarmPhotoScreen: React.FC<Props> = ({
     }
   };
 
-  const label = '写真で解除';
   const description = useMemo(() => {
-    return `対象: ${getJapanesePhotoTargetLabel(targetLabel)} / 残り ${remainingAttempts} 回まで再撮影できます`;
-  }, [targetLabel, remainingAttempts]);
+    return `残り ${remainingAttempts} 回まで再撮影できます`;
+  }, [remainingAttempts]);
 
   const buttonText = useMemo(() => {
     if (!permission?.granted) {
       return 'カメラを許可';
     }
     if (isCapturing) {
-      return '撮影中...';
+      return '撮影中';
     }
     return '撮影して解除';
   }, [isCapturing, permission?.granted]);
 
-  const shutterDisabled = isCapturing;
   const cameraMaxHeight = Math.min(windowHeight * 0.56, 620);
+  const attemptProgress = attempts / MAX_ATTEMPTS;
 
   return (
     <AlarmFireLayout
       time={time}
-      label={label}
+      label="写真で解除"
       onGiveUp={onGiveUp}
       onBack={onBack}
       showBackButton={showBackButton}
-      backgroundColor="#FF70A6"
+      backgroundColor={palette.lavender}
       showGiveUpButton={false}
     >
-      <Text style={styles.question}>撮影してください</Text>
-      <Text style={styles.targetLabel}>対象: {getJapanesePhotoTargetLabel(targetLabel)}</Text>
+      <Text variant="headlineSmall" style={styles.question}>
+        {getJapanesePhotoTargetLabel(targetLabel)}を撮影
+      </Text>
+      <Text variant="bodyMedium" style={styles.targetLabel}>
+        {description}
+      </Text>
       <View style={[styles.cameraBox, { maxHeight: cameraMaxHeight }]}>
         {permission?.granted ? (
           <CameraView ref={cameraRef} style={styles.cameraPreview} facing="back" />
         ) : (
           <View style={styles.cameraPlaceholder}>
-            <Text style={styles.cameraText}>[ カメラプレビュー ]</Text>
+            <Text variant="bodyLarge" style={styles.cameraText}>
+              カメラ許可が必要です
+            </Text>
           </View>
         )}
       </View>
-      <TouchableOpacity
-        style={[styles.shutterButton, shutterDisabled && styles.shutterButtonDisabled]}
+      <ProgressBar progress={attemptProgress} color="#fff" style={styles.progressBar} />
+      {isCapturing && <ActivityIndicator color="#fff" style={styles.activity} />}
+      <Button
+        mode="contained-tonal"
+        icon={permission?.granted ? 'camera-outline' : 'camera-plus-outline'}
+        buttonColor="rgba(255,255,255,0.24)"
+        textColor="#fff"
+        style={styles.captureButton}
+        disabled={isCapturing}
         onPress={permission?.granted ? handleCapture : () => requestPermission()}
-        activeOpacity={0.9}
-        disabled={shutterDisabled}
-        hitSlop={12}
-        accessibilityRole="button"
-        accessibilityLabel={buttonText}
       >
-        <View style={[styles.shutterOuter, !permission?.granted && styles.shutterOuterPending]}>
-          <View style={[styles.shutterInner, !permission?.granted && styles.shutterInnerPending]} />
-        </View>
-      </TouchableOpacity>
-      <Text style={styles.captureLabel}>{buttonText}</Text>
-      <Text style={styles.hint}>{description}</Text>
-      {!!status && <Text style={styles.status}>{status}</Text>}
+        {buttonText}
+      </Button>
+      {!!status && (
+        <Text variant="bodySmall" style={styles.status}>
+          {status}
+        </Text>
+      )}
     </AlarmFireLayout>
   );
 };
 
-const SHUTTER_OUTER_SIZE = 78;
-const SHUTTER_INNER_SIZE = 62;
-
 const styles = StyleSheet.create({
   question: {
     color: '#fff',
-    fontSize: 20,
     fontWeight: '700',
     textAlign: 'center'
   },
   cameraBox: {
-    marginTop: 14,
+    marginTop: 16,
     width: '100%',
     aspectRatio: 3 / 4,
-    borderRadius: 24,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.7)',
+    borderRadius: 28,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.72)',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden'
@@ -196,72 +198,34 @@ const styles = StyleSheet.create({
   cameraPlaceholder: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    padding: 18
   },
   cameraText: {
     color: '#fff',
-    fontSize: 18
-  },
-  shutterButton: {
-    marginTop: 16,
-    width: SHUTTER_OUTER_SIZE,
-    height: SHUTTER_OUTER_SIZE,
-    borderRadius: SHUTTER_OUTER_SIZE / 2,
-    alignSelf: 'center',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  shutterButtonDisabled: {
-    opacity: 0.6
-  },
-  shutterOuter: {
-    width: SHUTTER_OUTER_SIZE,
-    height: SHUTTER_OUTER_SIZE,
-    borderRadius: SHUTTER_OUTER_SIZE / 2,
-    borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)'
-  },
-  shutterOuterPending: {
-    borderColor: 'rgba(255,255,255,0.7)',
-    backgroundColor: 'rgba(255,255,255,0.06)'
-  },
-  shutterInner: {
-    width: SHUTTER_INNER_SIZE,
-    height: SHUTTER_INNER_SIZE,
-    borderRadius: SHUTTER_INNER_SIZE / 2,
-    backgroundColor: 'rgba(255,255,255,0.95)'
-  },
-  shutterInnerPending: {
-    backgroundColor: 'rgba(255,255,255,0.5)'
-  },
-  captureLabel: {
-    color: '#fff',
-    fontWeight: '700',
-    marginTop: 10
-    ,
-    alignSelf: 'center',
     textAlign: 'center'
   },
   targetLabel: {
     color: '#fff',
     marginTop: 8,
-    textAlign: 'center',
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  hint: {
-    color: '#fff',
-    marginTop: 12,
     textAlign: 'center'
+  },
+  progressBar: {
+    height: 8,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    marginTop: 14
+  },
+  activity: {
+    marginTop: 14
+  },
+  captureButton: {
+    marginTop: 16
   },
   status: {
     color: '#fff',
-    marginTop: 8,
-    textAlign: 'center',
-    fontSize: 12
+    marginTop: 10,
+    textAlign: 'center'
   }
 });
 

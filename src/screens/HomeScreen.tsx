@@ -1,17 +1,9 @@
-import React from "react";
-import {
-  View,
-  Image,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Platform,
-  StatusBar,
-} from "react-native";
-import { Alarm } from "../types";
-import { AlarmCard } from "../components/AlarmCard";
-import { palette, theme } from "../theme/colors";
+import React from 'react';
+import { FlatList, Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { Appbar, FAB, Surface, Text } from 'react-native-paper';
+import { Alarm } from '../types';
+import { AlarmCard } from '../components/AlarmCard';
+import { theme } from '../theme/colors';
 
 interface Props {
   alarms: Alarm[];
@@ -21,31 +13,13 @@ interface Props {
   onToggle: (alarmId: string, enabled: boolean) => void;
 }
 
-const HomeScreen: React.FC<Props> = ({
-  alarms,
-  onCreate,
-  onEdit,
-  onOpenSettings,
-  onToggle,
-}) => {
+const HomeScreen: React.FC<Props> = ({ alarms, onCreate, onEdit, onOpenSettings, onToggle }) => {
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.title}>おこしてYO!</Text>
-        </View>
-        <TouchableOpacity
-          onPress={onOpenSettings}
-          style={styles.settingsButton}
-        >
-          <Image
-            style={styles.settingsEmoji}
-            source={require("../../assets/icons/setting.png")}
-            resizeMode="contain"
-          />
-          <Text style={styles.settingsText}>設定</Text>
-        </TouchableOpacity>
-      </View>
+      <Appbar.Header mode="center-aligned" statusBarHeight={appbarStatusBarHeight} style={styles.appbar}>
+        <Appbar.Content title="おこしてYO!" titleStyle={styles.appbarTitle} />
+        <Appbar.Action icon="cog-outline" onPress={onOpenSettings} />
+      </Appbar.Header>
 
       <FlatList
         data={alarms}
@@ -55,124 +29,82 @@ const HomeScreen: React.FC<Props> = ({
             alarm={item}
             onPress={() => onEdit(item)}
             onToggle={(enabled) => onToggle(item.id, enabled)}
-            mode={item.mode ?? "fixed"}
+            mode={item.mode ?? 'fixed'}
           />
         )}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={[styles.listContent, alarms.length === 0 && styles.emptyListContent]}
+        ListHeaderComponent={
+          alarms.length > 0 ? (
+            <Text variant="labelLarge" style={styles.sectionLabel}>
+              アラーム
+            </Text>
+          ) : null
+        }
+        ListEmptyComponent={
+          <Surface mode="flat" elevation={0} style={styles.emptyState}>
+            <Text variant="headlineSmall" style={styles.emptyTitle}>
+              アラームなし
+            </Text>
+            <Text variant="bodyMedium" style={styles.emptyText}>
+              右下のボタンから最初のアラームを追加できます。
+            </Text>
+          </Surface>
+        }
       />
 
-      {/* アラームが0個の時だけ表示されるメッセージ */}
-      {alarms.length === 0 ? (
-        <View style={styles.hintBubble}>
-          <Text style={styles.hintText}>ここからアラームを追加してね！</Text>
-          <View style={styles.hintArrow} />
-        </View>
-      ) : null}
-
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={onCreate}
-        activeOpacity={0.9}
-      >
-        <Text style={styles.fabText}>＋</Text>
-      </TouchableOpacity>
+      <FAB icon="plus" label="追加" style={styles.fab} onPress={onCreate} />
     </View>
   );
 };
 
-const statusBarPadding =
-  Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
-const SETTINGS_ICON_SIZE = 28;
+const appbarStatusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
+    backgroundColor: theme.background
+  },
+  appbar: {
+    backgroundColor: theme.background
+  },
+  appbarTitle: {
+    fontWeight: '700'
+  },
+  listContent: {
     paddingHorizontal: 20,
-    paddingTop: 12 + statusBarPadding,
+    paddingBottom: 112
   },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
+  emptyListContent: {
+    flexGrow: 1
   },
-  title: {
-    color: theme.textPrimary,
-    fontSize: 28,
-    fontWeight: "700",
-  },
-  settingsButton: {
-    alignItems: "center",
-  },
-  settingsEmoji: {
-    width: SETTINGS_ICON_SIZE,
-    height: SETTINGS_ICON_SIZE,
-  },
-  settingsText: {
+  sectionLabel: {
     color: theme.textSecondary,
-    fontSize: 12,
-    marginTop: 4,
+    marginBottom: 12,
+    marginTop: 8
   },
-  sectionTitle: {
+  emptyState: {
+    marginTop: 72,
+    padding: 24,
+    borderRadius: 28,
+    backgroundColor: theme.cardMuted,
+    alignItems: 'center'
+  },
+  emptyTitle: {
     color: theme.textPrimary,
-    fontSize: 18,
-    fontWeight: "600",
-    marginVertical: 16,
+    fontWeight: '700'
+  },
+  emptyText: {
+    color: theme.textSecondary,
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20
   },
   fab: {
-    position: "absolute",
-    bottom: 32,
-    right: 24,
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: palette.sunrise,
-    justifyContent: "center",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
-  },
-  fabText: {
-    color: palette.white,
-    fontSize: 30,
-    lineHeight: 32,
-  },
-  hintBubble: {
-    position: "absolute",
-    bottom: 105, // ＋ボタン（32+60=92）の少し上に配置
-    right: 24,
-    backgroundColor: palette.sunrise, // ボタンと同じ色にすると統一感が出ます
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    // 影をつけて浮かせる
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  hintText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 14,
-  },
-  hintArrow: {
-    position: "absolute",
-    bottom: -8, // 吹き出しのすぐ下に配置
+    position: 'absolute',
     right: 20,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 8,
-    borderRightWidth: 8,
-    borderTopWidth: 10,
-    borderLeftColor: "transparent",
-    borderRightColor: "transparent",
-    borderTopColor: palette.sunrise, // 吹き出し本体と同じ色にする
-  },
+    bottom: 28
+  }
 });
 
 export default HomeScreen;

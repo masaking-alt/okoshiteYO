@@ -1,5 +1,6 @@
 import React from 'react';
-import { Alert, FlatList, Image, PixelRatio, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, FlatList, Image, PixelRatio, Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { Appbar, Badge, Button, Card, Surface, Switch, Text } from 'react-native-paper';
 import { getAllPhotoTargetLabels, getJapanesePhotoTargetLabel, PHOTO_TARGETS, PhotoTargetLabel } from '../data/photoTargets';
 import { palette, theme } from '../theme/colors';
 
@@ -61,39 +62,38 @@ const PhotoTargetsScreen: React.FC<Props> = ({ enabledPhotoTargets, onChangeEnab
     const enabled = enabledPhotoTargets.includes(item.en);
 
     return (
-      <TouchableOpacity
-        style={[
-          styles.gridCard,
-          enabled ? styles.gridCardEnabled : styles.gridCardDisabled
-        ]}
+      <Card
+        mode={enabled ? 'elevated' : 'outlined'}
+        style={[styles.gridCard, enabled ? styles.gridCardEnabled : styles.gridCardDisabled]}
         onPress={() => toggle(item.en)}
-        activeOpacity={0.8}
       >
-        <Image
-          style={[styles.targetIcon, { width: TARGET_ICON_SIZE, height: TARGET_ICON_SIZE }]}
-          source={TARGET_ICONS[item.en]}
-          resizeMode="contain"
-        />
-        <Text style={styles.gridTitle}>{getJapanesePhotoTargetLabel(item.en)}</Text>
-        <Text style={[styles.gridSubtitle, enabled ? styles.gridSubtitleEnabled : styles.gridSubtitleDisabled]}>{item.en}</Text>
-        {enabled && (
-          <View style={styles.checkBadge}>
-            <Text style={styles.checkBadgeText}>✓</Text>
-          </View>
-        )}
-      </TouchableOpacity>
+        <Card.Content style={styles.gridContent}>
+          <Badge visible={enabled} style={styles.checkBadge}>
+            ON
+          </Badge>
+          <Image
+            style={[styles.targetIcon, { width: TARGET_ICON_SIZE, height: TARGET_ICON_SIZE }]}
+            source={TARGET_ICONS[item.en]}
+            resizeMode="contain"
+          />
+          <Text variant="titleSmall" style={styles.gridTitle} numberOfLines={2}>
+            {getJapanesePhotoTargetLabel(item.en)}
+          </Text>
+          <Text variant="labelSmall" style={styles.gridSubtitle} numberOfLines={1}>
+            {item.en}
+          </Text>
+          <Switch value={enabled} onValueChange={() => toggle(item.en)} color={palette.sunriseDark} />
+        </Card.Content>
+      </Card>
     );
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.toolbar}>
-        <TouchableOpacity onPress={onBack}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.toolbarTitle}>証拠ショットの対象物</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <Appbar.Header mode="center-aligned" statusBarHeight={appbarStatusBarHeight} style={styles.appbar}>
+        <Appbar.BackAction onPress={onBack} />
+        <Appbar.Content title="証拠ショット" titleStyle={styles.appbarTitle} />
+      </Appbar.Header>
 
       <FlatList
         data={PHOTO_TARGETS}
@@ -104,135 +104,107 @@ const PhotoTargetsScreen: React.FC<Props> = ({ enabledPhotoTargets, onChangeEnab
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={styles.columnWrapper}
         ListHeaderComponent={
-          <View style={styles.headerContainer}>
-            <Text style={styles.helperText}>指定される物をON/OFFできます（最低{MIN_ENABLED_PHOTO_TARGETS}つはON）</Text>
-            <Text style={styles.helperText}>
+          <Surface mode="flat" style={styles.headerSurface}>
+            <Text variant="titleMedium" style={styles.headerTitle}>
+              対象物を選択
+            </Text>
+            <Text variant="bodySmall" style={styles.helperText}>
+              指定される物をON/OFFできます。最低{MIN_ENABLED_PHOTO_TARGETS}つはONにしてください。
+            </Text>
+            <Text variant="labelLarge" style={styles.counterText}>
               ON中: {enabledPhotoTargets.length} / {PHOTO_TARGETS.length}
             </Text>
-          </View>
+          </Surface>
         }
         ListFooterComponent={
-          <TouchableOpacity style={styles.secondaryButton} onPress={resetAll} activeOpacity={0.9}>
-            <Text style={styles.secondaryButtonText}>全てONに戻す</Text>
-          </TouchableOpacity>
+          <Button mode="outlined" icon="restore" style={styles.resetButton} onPress={resetAll}>
+            全てONに戻す
+          </Button>
         }
       />
     </View>
   );
 };
 
-const statusBarPadding = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+const appbarStatusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
-    paddingTop: 16 + statusBarPadding
+    backgroundColor: theme.background
   },
-  toolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginBottom: 8
+  appbar: {
+    backgroundColor: theme.background
   },
-  backText: {
-    color: theme.textPrimary,
-    fontSize: 22
-  },
-  toolbarTitle: {
-    color: theme.textPrimary,
-    fontSize: 18,
-    fontWeight: '600'
+  appbarTitle: {
+    fontWeight: '700'
   },
   listContent: {
     paddingHorizontal: 20,
-    paddingBottom: 120
+    paddingBottom: 112
   },
-  headerContainer: {
+  headerSurface: {
+    padding: 18,
+    borderRadius: 24,
+    backgroundColor: theme.cardMuted,
     marginBottom: 16
+  },
+  headerTitle: {
+    color: theme.textPrimary,
+    fontWeight: '700'
   },
   helperText: {
     color: theme.textSecondary,
-    fontSize: 12,
-    marginTop: 4
+    marginTop: 6,
+    lineHeight: 18
+  },
+  counterText: {
+    color: palette.sunriseDark,
+    marginTop: 12
   },
   columnWrapper: {
     justifyContent: 'space-between',
     marginBottom: 12
   },
   gridCard: {
-    width: '48%', // Approx half with spacing
-    backgroundColor: theme.card,
-    borderRadius: 20,
-    padding: 16,
-    aspectRatio: 1.5,// Square cards
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'transparent',
-    position: 'relative'
+    width: '48%',
+    minHeight: 184,
+    backgroundColor: theme.card
   },
   gridCardEnabled: {
-    backgroundColor: theme.accentSoft, // Light orange bg
-    borderColor: theme.accent,      // Orange border
+    backgroundColor: theme.accentSoft
   },
   gridCardDisabled: {
-    backgroundColor: theme.card,
-    borderColor: theme.divider,
-    opacity: 0.6
+    opacity: 0.68
   },
-  targetIcon: {
-    marginBottom: 10
-  },
-  gridTitle: {
-    color: theme.textPrimary,
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center'
-  },
-  gridSubtitle: {
-    fontSize: 11,
-    textAlign: 'center',
-    marginTop: 2
-  },
-  gridSubtitleEnabled: {
-    color: palette.sunriseDark
-  },
-  gridSubtitleDisabled: {
-    color: theme.textSecondary
+  gridContent: {
+    minHeight: 184,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    gap: 6
   },
   checkBadge: {
     position: 'absolute',
-    top: 8,
-    right: 8,
-    backgroundColor: theme.accent,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center'
+    right: 10,
+    top: 10,
+    backgroundColor: palette.sunriseDark
   },
-  checkBadgeText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: 'bold'
+  targetIcon: {
+    marginBottom: 6
   },
-  secondaryButton: {
-    marginTop: 24,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    borderColor: palette.sunrise,
-    borderWidth: 1,
-    alignSelf: 'center',
-    width: '100%',
-    alignItems: 'center'
-  },
-  secondaryButtonText: {
-    color: palette.sunrise,
+  gridTitle: {
+    color: theme.textPrimary,
     fontWeight: '700',
-    fontSize: 14
+    textAlign: 'center',
+    minHeight: 40
+  },
+  gridSubtitle: {
+    color: theme.textSecondary,
+    textAlign: 'center'
+  },
+  resetButton: {
+    marginTop: 18
   }
 });
 

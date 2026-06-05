@@ -1,6 +1,7 @@
-import React from "react";
-import { Platform, StatusBar, View, Text, StyleSheet, TouchableOpacity } from "react-native";
-import { palette } from "../theme/colors";
+import React from 'react';
+import { Platform, StatusBar, StyleSheet, View } from 'react-native';
+import { Button, Surface, Text } from 'react-native-paper';
+import { palette } from '../theme/colors';
 
 interface Props {
   time: string;
@@ -19,37 +20,44 @@ const AlarmFireLayout: React.FC<Props> = ({
   onGiveUp,
   onBack,
   children,
-  backgroundColor = palette.sunrise,
+  backgroundColor = palette.sunriseDark,
   showGiveUpButton = false,
-  showBackButton = false,
+  showBackButton = false
 }) => {
-  const statusBarPadding =
-    Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
+  const statusBarPadding = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
   return (
     <View style={[styles.container, { backgroundColor }]}>
       {showBackButton && onBack && (
-        <TouchableOpacity
+        <Button
+          mode="contained-tonal"
+          icon="arrow-left"
+          compact
           style={[styles.backButton, { top: 16 + statusBarPadding }]}
+          labelStyle={styles.backButtonLabel}
           onPress={onBack}
-          activeOpacity={0.85}
         >
-          <Text style={styles.backText}>← 戻る</Text>
-        </TouchableOpacity>
+          戻る
+        </Button>
       )}
-      <Text style={styles.label}>ALARM</Text>
-      <Text style={styles.time}>{time}</Text>
-      <Text style={styles.subLabel}>{label}</Text>
 
-      <View style={styles.panel}>{children}</View>
+      <Text variant="labelLarge" style={styles.label}>
+        アラーム
+      </Text>
+      <Text variant="displayLarge" style={styles.time}>
+        {time}
+      </Text>
+      <Text variant="titleMedium" style={styles.subLabel}>
+        {label}
+      </Text>
+
+      <Surface mode="flat" elevation={0} style={styles.panel}>
+        {children}
+      </Surface>
 
       {showGiveUpButton && (
-        <TouchableOpacity
-          style={styles.dismiss}
-          onLongPress={onGiveUp}
-          activeOpacity={0.8}
-        >
-          <Text style={styles.dismissText}>長押しでギブアップ</Text>
-        </TouchableOpacity>
+        <Button mode="contained-tonal" style={styles.dismiss} labelStyle={styles.dismissText} onLongPress={onGiveUp}>
+          長押しでギブアップ
+        </Button>
       )}
     </View>
   );
@@ -58,59 +66,49 @@ const AlarmFireLayout: React.FC<Props> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24
   },
   label: {
-    color: "#fff",
-    letterSpacing: 4,
-    fontWeight: "600",
+    color: '#fff',
+    fontWeight: '700'
   },
   time: {
-    color: "#fff",
-    fontSize: 80,
-    fontWeight: "800",
+    color: '#fff',
+    fontWeight: '800',
+    fontVariant: ['tabular-nums']
   },
   subLabel: {
-    color: "#fff",
-    marginTop: 12,
-    fontSize: 16,
-    textAlign: "center",
+    color: '#fff',
+    marginTop: 8,
+    textAlign: 'center'
   },
   panel: {
-    width: "100%",
+    width: '100%',
     marginTop: 28,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderRadius: 24,
+    borderRadius: 28,
     padding: 24,
+    backgroundColor: 'rgba(255,255,255,0.18)'
   },
   dismiss: {
-    position: "absolute",
+    position: 'absolute',
     bottom: 40,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.25)",
+    backgroundColor: 'rgba(0,0,0,0.22)'
   },
   dismissText: {
-    color: "#fff",
-    fontSize: 12,
-    letterSpacing: 1,
+    color: '#fff',
+    fontWeight: '700'
   },
   backButton: {
-    position: "absolute",
+    position: 'absolute',
     left: 16,
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 999,
-    backgroundColor: "rgba(0,0,0,0.22)",
+    backgroundColor: 'rgba(255,255,255,0.2)'
   },
-  backText: {
-    color: "#fff",
-    fontSize: 14,
-    fontWeight: "700",
-  },
+  backButtonLabel: {
+    color: '#fff',
+    fontWeight: '700'
+  }
 });
 
 export default AlarmFireLayout;

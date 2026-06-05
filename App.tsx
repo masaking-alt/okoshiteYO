@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, AppState, BackHandler, DeviceEventEmitter, StatusBar, StyleSheet } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { PaperProvider } from 'react-native-paper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import HomeScreen from './src/screens/HomeScreen';
 import EditorScreen from './src/screens/EditorScreen';
@@ -26,7 +28,7 @@ import {
   scheduleAlarm,
   stopAlarm
 } from './src/services/alarmScheduler';
-import { theme } from './src/theme/colors';
+import { paperTheme, theme } from './src/theme/colors';
 
 type Screen = 'home' | 'editor' | 'settings' | 'photoTargets' | 'demo' | 'alarm';
 type DemoMode = AlarmAction | 'random';
@@ -37,6 +39,13 @@ const ALARMS_STORAGE_KEY = 'alarms_storage_v1';
 type DemoReturnScreen = 'home' | 'editor' | 'settings';
 const PHOTO_TARGETS_STORAGE_KEY = 'photo_targets_enabled_v1';
 const MIN_ENABLED_PHOTO_TARGETS = 3;
+type MaterialIconName = React.ComponentProps<typeof MaterialCommunityIcons>['name'];
+
+const paperSettings = {
+  icon: ({ name, color, size }: { name: string; color: string; size: number }) => (
+    <MaterialCommunityIcons name={name as MaterialIconName} color={color} size={size} />
+  )
+};
 
 const sanitizeAlarmAction = (value: unknown): AlarmAction => {
   if (value === 'math' || value === 'shake' || value === 'photo') {
@@ -459,74 +468,75 @@ const App: React.FC<AppProps> = ({ alarm, entryPoint }) => {
 
   return (
     <SafeAreaProvider>
-      <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
-      <StatusBar barStyle="dark-content" />
-      {screen === 'home' && (
-        <HomeScreen
-          alarms={[...alarms].sort((a, b) => a.time.localeCompare(b.time))}
-          onCreate={() => {
-            setSelectedAlarm(undefined);
-            setScreen('editor');
-          }}
-          onEdit={(alarm) => {
-            setSelectedAlarm(alarm);
-            setScreen('editor');
-          }}
-          onOpenSettings={() => setScreen('settings')}
-          onToggle={toggleAlarm}
-        />
-      )}
+      <PaperProvider theme={paperTheme} settings={paperSettings}>
+        <SafeAreaView style={styles.safeArea} edges={['left', 'right']}>
+          <StatusBar barStyle="dark-content" backgroundColor={theme.background} />
+          {screen === 'home' && (
+            <HomeScreen
+              alarms={[...alarms].sort((a, b) => a.time.localeCompare(b.time))}
+              onCreate={() => {
+                setSelectedAlarm(undefined);
+                setScreen('editor');
+              }}
+              onEdit={(alarm) => {
+                setSelectedAlarm(alarm);
+                setScreen('editor');
+              }}
+              onOpenSettings={() => setScreen('settings')}
+              onToggle={toggleAlarm}
+            />
+          )}
 
-      {screen === 'editor' && (
-        <EditorScreen
-          alarm={selectedAlarm}
-          onBack={() => setScreen('home')}
-          onPreviewAction={openPreview}
-          onSave={saveAlarm}
-          onDelete={deleteAlarm}
-          defaultAction={defaultAction}
-          defaultMode={actionMode}
-        />
-      )}
+          {screen === 'editor' && (
+            <EditorScreen
+              alarm={selectedAlarm}
+              onBack={() => setScreen('home')}
+              onPreviewAction={openPreview}
+              onSave={saveAlarm}
+              onDelete={deleteAlarm}
+              defaultAction={defaultAction}
+              defaultMode={actionMode}
+            />
+          )}
 
-      {screen === 'settings' && (
-        <SettingsScreen
-          currentAction={defaultAction}
-          onSelectAction={(action) => {
-            setDefaultAction(action);
-          }}
-          onClose={() => setScreen('home')}
-          onPreviewAction={openPreview}
-          actionMode={actionMode}
-          onChangeMode={setActionMode}
-          onShowDemo={openDemo}
-          onOpenPhotoTargets={() => setScreen('photoTargets')}
-        />
-      )}
+          {screen === 'settings' && (
+            <SettingsScreen
+              currentAction={defaultAction}
+              onSelectAction={(action) => {
+                setDefaultAction(action);
+              }}
+              onClose={() => setScreen('home')}
+              onPreviewAction={openPreview}
+              actionMode={actionMode}
+              onChangeMode={setActionMode}
+              onShowDemo={openDemo}
+              onOpenPhotoTargets={() => setScreen('photoTargets')}
+            />
+          )}
 
-      {screen === 'photoTargets' && (
-        <PhotoTargetsScreen
-          enabledPhotoTargets={enabledPhotoTargets}
-          onChangeEnabledPhotoTargets={setEnabledPhotoTargets}
-          onBack={() => setScreen('settings')}
-        />
-      )}
+          {screen === 'photoTargets' && (
+            <PhotoTargetsScreen
+              enabledPhotoTargets={enabledPhotoTargets}
+              onChangeEnabledPhotoTargets={setEnabledPhotoTargets}
+              onBack={() => setScreen('settings')}
+            />
+          )}
 
-      {screen === 'demo' && (
-        <AlarmDemoScreen
-          mode={demoMode}
-          onComplete={() => setScreen(demoReturnScreen)}
-          onBack={() => setScreen(demoReturnScreen)}
-          showBackButton
-          enabledPhotoTargets={enabledPhotoTargets}
-        />
-      )}
+          {screen === 'demo' && (
+            <AlarmDemoScreen
+              mode={demoMode}
+              onComplete={() => setScreen(demoReturnScreen)}
+              onBack={() => setScreen(demoReturnScreen)}
+              showBackButton
+              enabledPhotoTargets={enabledPhotoTargets}
+            />
+          )}
 
-      {screen === 'alarm' && alarmResolvedMode && (
-        <AlarmDemoScreen mode={alarmResolvedMode} time={fireTime} onComplete={completeAlarm} enabledPhotoTargets={enabledPhotoTargets} />
-      )}
-
-      </SafeAreaView>
+          {screen === 'alarm' && alarmResolvedMode && (
+            <AlarmDemoScreen mode={alarmResolvedMode} time={fireTime} onComplete={completeAlarm} enabledPhotoTargets={enabledPhotoTargets} />
+          )}
+        </SafeAreaView>
+      </PaperProvider>
     </SafeAreaProvider>
   );
 };

@@ -1,5 +1,6 @@
 import React from 'react';
-import { TouchableOpacity, View, Text, StyleSheet, Switch } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { Card, Chip, Switch, Text } from 'react-native-paper';
 import { Alarm } from '../types';
 import { palette, theme } from '../theme/colors';
 
@@ -11,28 +12,36 @@ interface Props {
 }
 
 export const AlarmCard: React.FC<Props> = ({ alarm, onPress, onToggle, mode }) => {
+  const actionLabel = mode === 'fixed' ? labelForAction(alarm.action) : RANDOM_LABEL;
+
   return (
-    <TouchableOpacity
+    <Card
+      mode={alarm.active ? 'elevated' : 'outlined'}
       style={[styles.card, !alarm.active && styles.cardInactive]}
-      activeOpacity={0.88}
+      contentStyle={styles.cardContent}
       onPress={onPress}
     >
-      <View style={styles.switchRow}>
-        <Switch
-          trackColor={{ false: palette.border, true: palette.sunrise }}
-          thumbColor={theme.card}
-          value={alarm.active}
-          onValueChange={onToggle}
-        />
+      <View style={styles.headerRow}>
+        <View style={styles.timeColumn}>
+          <Text variant="displayMedium" style={styles.time}>
+            {alarm.time}
+          </Text>
+          <Text variant="bodyMedium" style={styles.subtitle} numberOfLines={1}>
+            {subtitleFor(alarm) || '繰り返しなし'}
+          </Text>
+        </View>
+        <Switch value={alarm.active} onValueChange={onToggle} color={palette.sunriseDark} />
       </View>
-      <View style={styles.timeBlock}>
-        <Text style={styles.time}>{alarm.time}</Text>
-        <Text style={styles.subtitle}>{subtitleFor(alarm)}</Text>
-        <Text style={styles.actionLabel}>
-          {mode === 'fixed' ? labelForAction(alarm.action) : RANDOM_LABEL}
-        </Text>
+
+      <View style={styles.metaRow}>
+        <Chip compact mode="flat" icon={mode === 'random' ? 'shuffle-variant' : iconForAction(alarm.action)}>
+          {actionLabel}
+        </Chip>
+        <Chip compact mode="outlined" icon={alarm.active ? 'bell-ring-outline' : 'bell-off-outline'}>
+          {alarm.active ? '有効' : '停止中'}
+        </Chip>
       </View>
-    </TouchableOpacity>
+    </Card>
   );
 };
 
@@ -56,50 +65,54 @@ const labelForAction = (action: Alarm['action']) => {
   }
 };
 
+const iconForAction = (action: Alarm['action']) => {
+  switch (action) {
+    case 'math':
+      return 'calculator-variant-outline';
+    case 'photo':
+      return 'camera-outline';
+    case 'shake':
+      return 'gesture-tap-button';
+    default:
+      return 'alarm';
+  }
+};
+
 const RANDOM_LABEL = 'ランダム';
 
 const styles = StyleSheet.create({
   card: {
-    position: 'relative',
-    backgroundColor: theme.card,
-    paddingHorizontal: 20,
-    paddingVertical: 24,
-    borderRadius: 24,
-    marginBottom: 16,
-    borderColor: palette.border,
-    borderWidth: 1.2
+    marginBottom: 14,
+    backgroundColor: theme.card
   },
   cardInactive: {
-    opacity: 0.6
+    opacity: 0.64
   },
-  switchRow: {
-    position: 'absolute',
-    top: 16,
-    right: 16,
-    zIndex: 1
+  cardContent: {
+    paddingVertical: 18
   },
-  timeBlock: {
-    alignItems: 'center',
-    marginTop: 12,
-    paddingTop: 12
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12
+  },
+  timeColumn: {
+    flex: 1
   },
   time: {
     color: theme.textPrimary,
-    fontSize: 52,
     fontWeight: '700',
-    letterSpacing: -1,
-    textAlign: 'center'
+    fontVariant: ['tabular-nums']
   },
   subtitle: {
     color: theme.textSecondary,
-    marginTop: 8,
-    fontSize: 14,
-    textAlign: 'center'
+    marginTop: 4
   },
-  actionLabel: {
-    marginTop: 8,
-    color: palette.sunriseDark,
-    fontWeight: '600',
-    textAlign: 'center'
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 14
   }
 });

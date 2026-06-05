@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Platform, StatusBar, ScrollView, Alert, Linking } from 'react-native';
+import { Alert, Linking, Platform, ScrollView, StatusBar, StyleSheet, View } from 'react-native';
+import { Appbar, Avatar, Button, Card, Divider, IconButton, RadioButton, SegmentedButtons, Text } from 'react-native-paper';
 import { AlarmAction } from '../types';
 import { palette, theme } from '../theme/colors';
 import { ensureNotificationPermission, openDndSettings, openExactAlarmSettings, openNotificationSettings } from '../services/alarmScheduler';
@@ -14,6 +15,12 @@ interface Props {
   onShowDemo: (mode: 'random' | AlarmAction) => void;
   onOpenPhotoTargets: () => void;
 }
+
+const actionOptions: { key: AlarmAction; title: string; subtitle: string; icon: string }[] = [
+  { key: 'math', title: '計算チャレンジ', subtitle: '計算を3問解いて解除', icon: 'calculator-variant-outline' },
+  { key: 'shake', title: 'シェイク解除', subtitle: 'スマホを50回振って解除', icon: 'gesture-tap-button' },
+  { key: 'photo', title: '証拠ショット', subtitle: '指定された物を撮影して解除', icon: 'camera-outline' }
+];
 
 const SettingsScreen: React.FC<Props> = ({
   currentAction,
@@ -53,216 +60,187 @@ const SettingsScreen: React.FC<Props> = ({
 
   return (
     <View style={styles.container}>
-      <View style={styles.toolbar}>
-        <TouchableOpacity onPress={onClose}>
-          <Text style={styles.backText}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.toolbarTitle}>設定</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <Appbar.Header mode="center-aligned" statusBarHeight={appbarStatusBarHeight} style={styles.appbar}>
+        <Appbar.BackAction onPress={onClose} />
+        <Appbar.Content title="設定" titleStyle={styles.appbarTitle} />
+      </Appbar.Header>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-       
-        <Text style={styles.sectionLabel}>解除アクション</Text>
-        {(['math', 'shake', 'photo'] as AlarmAction[]).map((action) => {
-          const active = action === currentAction;
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+        <Text variant="titleMedium" style={styles.sectionTitle}>
+          解除モード
+        </Text>
+        <SegmentedButtons
+          value={actionMode}
+          onValueChange={(value: string) => onChangeMode(value as 'fixed' | 'random')}
+          buttons={[
+            { value: 'fixed', label: '選択制', icon: 'target' },
+            { value: 'random', label: 'ランダム', icon: 'shuffle-variant' }
+          ]}
+        />
+        <Text variant="bodySmall" style={styles.helperText}>
+          選択制では下のアクションを固定し、ランダムでは解除時に毎回自動で選びます。
+        </Text>
+
+        <Button
+          mode="contained-tonal"
+          icon="play-circle-outline"
+          style={styles.previewButton}
+          onPress={() => onShowDemo(actionMode === 'random' ? 'random' : currentAction)}
+        >
+          解除プレビューを開始
+        </Button>
+
+        <Text variant="titleMedium" style={styles.sectionTitle}>
+          解除アクション
+        </Text>
+        {actionOptions.map((action) => {
+          const active = action.key === currentAction;
           return (
-            <TouchableOpacity
-              key={action}
-              style={[styles.rowCard]}
-              onPress={() => onSelectAction(action)}
-              onLongPress={() => onPreviewAction(action)}
+            <Card
+              key={action.key}
+              mode={active ? 'elevated' : 'outlined'}
+              style={[styles.actionCard, active && styles.actionCardActive]}
+              onPress={() => onSelectAction(action.key)}
+              onLongPress={() => onPreviewAction(action.key)}
             >
-              <View>
-                <Text style={styles.rowTitle}>{titleFor(action)}</Text>
-                <Text style={styles.rowSubtitle}>{subtitleFor(action)}</Text>
-              </View>
-              <Text style={[styles.rowStatus]}>
-              長押しでプレビュー
-              </Text>
-            </TouchableOpacity>
+              <Card.Content style={styles.actionContent}>
+                <Avatar.Icon
+                  size={44}
+                  icon={action.icon}
+                  color={active ? theme.card : palette.sunriseDark}
+                  style={[styles.actionIcon, active && styles.actionIconActive]}
+                />
+                <View style={styles.actionTextColumn}>
+                  <Text variant="titleSmall" style={styles.actionTitle}>
+                    {action.title}
+                  </Text>
+                  <Text variant="bodySmall" style={styles.actionSubtitle}>
+                    {action.subtitle}
+                  </Text>
+                  <Text variant="labelSmall" style={styles.previewHint}>
+                    長押しで個別プレビュー
+                  </Text>
+                </View>
+                <RadioButton.Android
+                  value={action.key}
+                  status={active ? 'checked' : 'unchecked'}
+                  onPress={() => onSelectAction(action.key)}
+                  color={palette.sunriseDark}
+                />
+              </Card.Content>
+            </Card>
           );
         })}
 
-        <Text style={styles.sectionLabel}>証拠ショット</Text>
-        <TouchableOpacity style={styles.rowCard} onPress={onOpenPhotoTargets} activeOpacity={0.85}>
-          <View>
-            <Text style={styles.rowTitle}>証拠ショットの対象物</Text>
-            <Text style={styles.rowSubtitle}>指定される物をON/OFFできます（最低3つはON）</Text>
-          </View>
-          <Text style={styles.rowStatus}>開く</Text>
-        </TouchableOpacity>
+        <Text variant="titleMedium" style={styles.sectionTitle}>
+          証拠ショット
+        </Text>
+        <Card mode="outlined" style={styles.navigationCard} onPress={onOpenPhotoTargets}>
+          <Card.Title
+            title="証拠ショットの対象物"
+            subtitle="最低3つ以上をONにします"
+            left={() => <Avatar.Icon size={40} icon="image-filter-center-focus" />}
+            right={() => <IconButton icon="chevron-right" onPress={onOpenPhotoTargets} />}
+          />
+        </Card>
 
-        <Text style={styles.sectionLabel}>権限と設定</Text>
-
-        <TouchableOpacity style={styles.rowCard} onPress={openAppSettings}>
-          <View>
-            <Text style={styles.rowTitle}>アプリ設定</Text>
-            <Text style={styles.rowSubtitle}>カメラなど個別の権限はここから変更できます</Text>
-          </View>
-          <Text style={styles.rowStatus}>開く</Text>
-        </TouchableOpacity>
-
+        <Text variant="titleMedium" style={styles.sectionTitle}>
+          権限と端末設定
+        </Text>
+        <Card mode="outlined" style={styles.permissionCard}>
+          <Card.Content style={styles.permissionContent}>
+            <Button mode="contained-tonal" icon="bell-outline" onPress={requestNotifications}>
+              通知を確認
+            </Button>
+            <Divider />
+            <Button mode="outlined" icon="alarm-check" onPress={() => openExactAlarmSettings()}>
+              正確なアラーム設定
+            </Button>
+            <Button mode="outlined" icon="minus-circle-outline" onPress={() => openDndSettings()}>
+              おやすみモード設定
+            </Button>
+            <Button mode="outlined" icon="cog-outline" onPress={openAppSettings}>
+              アプリ設定
+            </Button>
+          </Card.Content>
+        </Card>
       </ScrollView>
     </View>
   );
 };
 
-const titleFor = (action: AlarmAction) => {
-  switch (action) {
-    case 'math':
-      return '計算チャレンジ';
-    case 'shake':
-      return 'シェイク解除';
-    case 'photo':
-      return '証拠ショット';
-    default:
-      return 'カスタムアクション';
-  }
-};
-
-const subtitleFor = (action: AlarmAction) => {
-  switch (action) {
-    case 'math':
-      return '計算を3問解いて解除';
-    case 'shake':
-      return 'スマホを50回振って解除';
-    case 'photo':
-      return '指定された物を撮影して解除';
-    default:
-      return '';
-  }
-};
-
-const statusBarPadding = Platform.OS === 'android' ? (StatusBar.currentHeight ?? 0) : 0;
+const appbarStatusBarHeight = Platform.OS === 'android' ? StatusBar.currentHeight ?? 0 : 0;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.background,
-    paddingHorizontal: 20,
-    paddingTop: 16 + statusBarPadding
+    backgroundColor: theme.background
   },
-  toolbar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between'
+  appbar: {
+    backgroundColor: theme.background
   },
-  backText: {
-    color: theme.textPrimary,
-    fontSize: 22
-  },
-  toolbarTitle: {
-    color: theme.textPrimary,
-    fontSize: 18,
-    fontWeight: '600'
-  },
-  sectionLabel: {
-    color: theme.textSecondary,
-    fontSize: 13,
-    marginTop: 24,
-    marginBottom: 12
-  },
-  rowCard: {
-    backgroundColor: theme.card,
-    borderRadius: 18,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: theme.divider,
-    marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center'
-  },
-  rowCardActive: {
-    borderColor: palette.sunrise
-  },
-  rowTitle: {
-    color: theme.textPrimary,
-    fontSize: 16,
-    fontWeight: '600'
-  },
-  rowSubtitle: {
-    color: theme.textSecondary,
-    marginTop: 6,
-    width: 220
-  },
-  rowStatus: {
-    color: theme.textSecondary,
-    fontSize: 12
-  },
-  modeRow: {
-    flexDirection: 'row',
-    gap: 12
-  },
-  modeChip: {
-    flex: 1,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: theme.divider,
-    paddingVertical: 12,
-    alignItems: 'center'
-  },
-  modeChipActive: {
-    backgroundColor: theme.card,
-    borderColor: palette.sunrise
-  },
-  modeChipText: {
-    color: theme.textSecondary,
-    fontWeight: '600'
-  },
-  modeChipTextActive: {
-    color: palette.sunriseDark
-  },
-  fakeSwitch: {
-    width: 52,
-    height: 28,
-    borderRadius: 999,
-    backgroundColor: palette.sunrise,
-    justifyContent: 'center',
-    paddingHorizontal: 6,
-    borderWidth: 1,
-    borderColor: palette.sunrise
-  },
-  fakeSwitchDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: palette.white,
-    marginLeft: 16
-  },
-  demoButton: {
-    marginTop: 24,
-    paddingVertical: 14,
-    borderRadius: 16,
-    backgroundColor: palette.sunrise,
-    alignItems: 'center'
-  },
-  testButton: {
-    marginTop: 12
-  },
-  stopButton: {
-    marginTop: 8,
-    backgroundColor: palette.ink
-  },
-  demoText: {
-    color: palette.white,
+  appbarTitle: {
     fontWeight: '700'
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingBottom: 112
+  },
+  sectionTitle: {
+    color: theme.textPrimary,
+    fontWeight: '700',
+    marginBottom: 12,
+    marginTop: 24
   },
   helperText: {
     color: theme.textSecondary,
-    fontSize: 12
+    marginTop: 10,
+    lineHeight: 18
   },
-  statusColumn: {
-    alignItems: 'flex-end'
+  previewButton: {
+    marginTop: 16
   },
-  statusPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
-    overflow: 'hidden',
-    fontWeight: '700',
-    fontSize: 12
+  actionCard: {
+    marginBottom: 12,
+    backgroundColor: theme.card
+  },
+  actionCardActive: {
+    backgroundColor: theme.accentSoft
+  },
+  actionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12
+  },
+  actionIcon: {
+    backgroundColor: theme.accentSoft
+  },
+  actionIconActive: {
+    backgroundColor: palette.sunriseDark
+  },
+  actionTextColumn: {
+    flex: 1
+  },
+  actionTitle: {
+    color: theme.textPrimary,
+    fontWeight: '700'
+  },
+  actionSubtitle: {
+    color: theme.textSecondary,
+    marginTop: 3
+  },
+  previewHint: {
+    color: palette.sunriseDark,
+    marginTop: 6
+  },
+  navigationCard: {
+    backgroundColor: theme.card
+  },
+  permissionCard: {
+    backgroundColor: theme.card
+  },
+  permissionContent: {
+    gap: 12
   }
 });
 

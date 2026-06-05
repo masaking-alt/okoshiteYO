@@ -1,20 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { ProgressBar, Text } from 'react-native-paper';
 import { Accelerometer } from 'expo-sensors';
 import AlarmFireLayout from '../components/AlarmFireLayout';
 import { FireProps } from './fire/types';
+import { palette } from '../theme/colors';
 
 const TARGET_SHAKES = 50;
 const SHAKE_THRESHOLD = 0.8;
 const SHAKE_COOLDOWN_MS = 350;
 const UPDATE_INTERVAL_MS = 100;
 
-const AlarmShakeScreen: React.FC<FireProps> = ({
-  time,
-  onGiveUp,
-  onBack,
-  showBackButton,
-}) => {
+const AlarmShakeScreen: React.FC<FireProps> = ({ time, onGiveUp, onBack, showBackButton }) => {
   const [shakeCount, setShakeCount] = useState(0);
   const [sensorAvailable, setSensorAvailable] = useState(true);
   const lastShakeAt = useRef(0);
@@ -61,7 +58,7 @@ const AlarmShakeScreen: React.FC<FireProps> = ({
   }, [onGiveUp, shakeCount]);
 
   const remaining = Math.max(0, TARGET_SHAKES - shakeCount);
-  const progressWidth = `${Math.min(100, (shakeCount / TARGET_SHAKES) * 100)}%` as `${number}%`;
+  const progress = Math.min(1, shakeCount / TARGET_SHAKES);
 
   return (
     <AlarmFireLayout
@@ -70,14 +67,21 @@ const AlarmShakeScreen: React.FC<FireProps> = ({
       onGiveUp={onGiveUp}
       onBack={onBack}
       showBackButton={showBackButton}
-      backgroundColor="#FFD166"
+      backgroundColor={palette.teal}
       showGiveUpButton={false}
     >
-      <Text style={styles.question}>残り {remaining} シェイク！</Text>
-      {!sensorAvailable && <Text style={styles.hint}>この端末では加速度センサーが使えません。</Text>}
-      <View style={styles.progressOuter}>
-        <View style={[styles.progressFill, { width: progressWidth }]} />
-      </View>
+      <Text variant="headlineSmall" style={styles.question}>
+        残り {remaining} シェイク
+      </Text>
+      {!sensorAvailable && (
+        <Text variant="bodySmall" style={styles.hint}>
+          この端末では加速度センサーが使えません。
+        </Text>
+      )}
+      <ProgressBar progress={progress} color="#fff" style={styles.progressBar} />
+      <Text variant="labelLarge" style={styles.counter}>
+        {shakeCount} / {TARGET_SHAKES}
+      </Text>
     </AlarmFireLayout>
   );
 };
@@ -85,28 +89,25 @@ const AlarmShakeScreen: React.FC<FireProps> = ({
 const styles = StyleSheet.create({
   question: {
     color: '#fff',
-    fontSize: 24,
     fontWeight: '700',
     textAlign: 'center'
   },
   hint: {
     color: '#fff',
-    fontSize: 12,
     marginTop: 8,
     textAlign: 'center'
   },
-  progressOuter: {
-    width: '100%',
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginTop: 20
+  progressBar: {
+    height: 14,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.24)',
+    marginTop: 22
   },
-  progressFill: {
-    width: '38%',
-    height: '100%',
-    borderRadius: 12,
-    backgroundColor: '#fff'
+  counter: {
+    color: '#fff',
+    marginTop: 10,
+    textAlign: 'center',
+    fontVariant: ['tabular-nums']
   }
 });
 
